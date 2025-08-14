@@ -4,30 +4,16 @@
 #include "gtest/gtest.h"
 
 #include "Eigen/Dense"
-#include "simd_helper.h"
+#include "simd_helper/simd_helper.h"
 
-class SimdHelperTest : public ::testing::Test {
- protected:
-  virtual void SetUp() {}
-  virtual void TearDown() {}
-};
-
-TEST_F(SimdHelperTest, SimdDataLoadAndSaveTest) {
-  // SIMD scalar data
-  float value[8] = {1.23456,     -0.45678,  4.16789, -1.42536,
-                    14234.42252, 11.023334, 0.23133, -9.41111};
-  simd::Scalar v__(value);
-  float buf[8];
-  v__.StoreData(buf);
-  for (int k = 0; k < simd::Scalar::GetDataStride(); ++k)
-    EXPECT_FLOAT_EQ(value[k], buf[k]);
-}
+using EigenVec3 = Eigen::Vector3f;
+using EigenMat3x3 = Eigen::Matrix3f;
 
 simd::Vector<3> GenerateVectors() {
-  Eigen::Vector3f v1(4, 6, 8);
-  Eigen::Vector3f v2(-3, 1, 6);
-  Eigen::Vector3f v3(9, 3, -5);
-  Eigen::Vector3f v4(1, 6, -10);
+  EigenVec3 v1(4, 6, 8);
+  EigenVec3 v2(-3, 1, 6);
+  EigenVec3 v3(9, 3, -5);
+  EigenVec3 v4(1, 6, -10);
 #if CPU_ARCH_AMD64
   simd::Vector<3> v__({v1, v2, v3, v4, v4, v3, v2, v1});
 #elif CPU_ARCH_ARM
@@ -37,13 +23,13 @@ simd::Vector<3> GenerateVectors() {
 }
 
 simd::Matrix<3, 3> GenerateMatrices() {
-  Eigen::Matrix3f M1;
+  EigenMat3x3 M1;
   M1 << 1, 2, 3, 4, 5, 6, 7, 8, 9;
-  Eigen::Matrix3f M2;
+  EigenMat3x3 M2;
   M2 << 1, -2, 3, -4, 5, -6, 7, -8, 9;
-  Eigen::Matrix3f M3;
+  EigenMat3x3 M3;
   M3 << -1, 2, -3, 4, -5, 6, -7, 8, -9;
-  Eigen::Matrix3f M4;
+  EigenMat3x3 M4;
   M4 << 9, -8, 7, -6, 5, -4, 3, -1, 2;
 #if CPU_ARCH_AMD64
   simd::Matrix<3, 3> M__({M1, M2, M3, M4, M1, M2, M3, M4});
@@ -53,21 +39,21 @@ simd::Matrix<3, 3> GenerateMatrices() {
   return M__;
 }
 
-std::vector<Eigen::Vector3f> GenerateMultiplyResults() {
-  Eigen::Matrix3f M1;
+std::vector<EigenVec3> GenerateMultiplyResults() {
+  EigenMat3x3 M1;
   M1 << 1, 2, 3, 4, 5, 6, 7, 8, 9;
-  Eigen::Matrix3f M2;
+  EigenMat3x3 M2;
   M2 << 1, -2, 3, -4, 5, -6, 7, -8, 9;
-  Eigen::Matrix3f M3;
+  EigenMat3x3 M3;
   M3 << -1, 2, -3, 4, -5, 6, -7, 8, -9;
-  Eigen::Matrix3f M4;
+  EigenMat3x3 M4;
   M4 << 9, -8, 7, -6, 5, -4, 3, -1, 2;
-  Eigen::Vector3f v1(4, 6, 8);
-  Eigen::Vector3f v2(-3, 1, 6);
-  Eigen::Vector3f v3(9, 3, -5);
-  Eigen::Vector3f v4(1, 6, -10);
+  EigenVec3 v1(4, 6, 8);
+  EigenVec3 v2(-3, 1, 6);
+  EigenVec3 v3(9, 3, -5);
+  EigenVec3 v4(1, 6, -10);
 
-  std::vector<Eigen::Vector3f> res_true;
+  std::vector<EigenVec3> res_true;
   res_true.push_back(M1 * v1);
   res_true.push_back(M2 * v2);
   res_true.push_back(M3 * v3);
@@ -79,26 +65,45 @@ std::vector<Eigen::Vector3f> GenerateMultiplyResults() {
   return res_true;
 }
 
-TEST_F(SimdHelperTest, MatrixVectorMultiplyTest) {
+namespace simd_helper {
+
+class CalculationTest : public ::testing::Test {
+ protected:
+  virtual void SetUp() {}
+  virtual void TearDown() {}
+};
+
+TEST_F(CalculationTest, SimdDataLoadAndSaveTest) {
+  // SIMD scalar data
+  float value[8] = {1.23456,     -0.45678,  4.16789, -1.42536,
+                    14234.42252, 11.023334, 0.23133, -9.41111};
+  simd::Scalar v__(value);
+  float buf[8];
+  v__.StoreData(buf);
+  for (int k = 0; k < simd::Scalar::GetDataStride(); ++k)
+    EXPECT_FLOAT_EQ(value[k], buf[k]);
+}
+
+TEST_F(CalculationTest, MatrixVectorMultiplyTest) {
   simd::Matrix<3, 3> M__ = GenerateMatrices();
   simd::Vector<3> v__ = GenerateVectors();
   const auto res_true = GenerateMultiplyResults();
 
   const auto Mv__ = M__ * v__;
-  std::vector<Eigen::Vector3f> res;
+  std::vector<EigenVec3> res;
   Mv__.StoreData(&res);
   for (int i = 0; i < 3; ++i)
     for (int k = 0; k < simd::Scalar::GetDataStride(); ++k)
       EXPECT_FLOAT_EQ(res_true[k](i), res[k](i));
 }
 
-TEST_F(SimdHelperTest, VectorAddSubTest) {
-  Eigen::Vector3f v1(4, 6, 8);
-  Eigen::Vector3f v2(-3, 1, 6);
-  Eigen::Vector3f v3(9, 3, -5);
-  Eigen::Vector3f v4(1, 6, -10);
+TEST_F(CalculationTest, VectorAddSubTest) {
+  EigenVec3 v1(4, 6, 8);
+  EigenVec3 v2(-3, 1, 6);
+  EigenVec3 v3(9, 3, -5);
+  EigenVec3 v4(1, 6, -10);
 
-  std::vector<Eigen::Vector3f> add_res_true;
+  std::vector<EigenVec3> add_res_true;
   add_res_true.push_back(v1 + v2);
   add_res_true.push_back(v3 + v4);
   add_res_true.push_back(v1 + v4);
@@ -108,7 +113,7 @@ TEST_F(SimdHelperTest, VectorAddSubTest) {
   add_res_true.push_back(v3 + v4);
   add_res_true.push_back(v1 + v2);
 
-  std::vector<Eigen::Vector3f> sub_res_true;
+  std::vector<EigenVec3> sub_res_true;
   sub_res_true.push_back(v1 - v2);
   sub_res_true.push_back(v3 - v4);
   sub_res_true.push_back(v1 - v4);
@@ -125,7 +130,7 @@ TEST_F(SimdHelperTest, VectorAddSubTest) {
   simd::Vector<3> va__({v1, v3, v1, v3});
   simd::Vector<3> vb__({v2, v4, v4, v2});
 #endif
-  std::vector<Eigen::Vector3f> res;
+  std::vector<EigenVec3> res;
   const auto add__ = va__ + vb__;
   add__.StoreData(&res);
   for (int i = 0; i < 3; ++i)
@@ -139,17 +144,17 @@ TEST_F(SimdHelperTest, VectorAddSubTest) {
       EXPECT_FLOAT_EQ(sub_res_true[k](i), res[k](i));
 }
 
-TEST_F(SimdHelperTest, MatrixAddSubTest) {
-  Eigen::Matrix3f M1;
+TEST_F(CalculationTest, MatrixAddSubTest) {
+  EigenMat3x3 M1;
   M1 << 1, 2, 3, 4, 5, 6, 7, 8, 9;
-  Eigen::Matrix3f M2;
+  EigenMat3x3 M2;
   M2 << 1, -2, 3, -4, 5, -6, 7, -8, 9;
-  Eigen::Matrix3f M3;
+  EigenMat3x3 M3;
   M3 << -1, 2, -3, 4, -5, 6, -7, 8, -9;
-  Eigen::Matrix3f M4;
+  EigenMat3x3 M4;
   M4 << 9, -8, 7, -6, 5, -4, 3, -1, 2;
 
-  std::vector<Eigen::Matrix3f> add_res_true;
+  std::vector<EigenMat3x3> add_res_true;
   add_res_true.push_back(M1 + M2);
   add_res_true.push_back(M3 + M4);
   add_res_true.push_back(M1 + M4);
@@ -159,7 +164,7 @@ TEST_F(SimdHelperTest, MatrixAddSubTest) {
   add_res_true.push_back(M1 + M4);
   add_res_true.push_back(M4 + M2);
 
-  std::vector<Eigen::Matrix3f> sub_res_true;
+  std::vector<EigenMat3x3> sub_res_true;
   sub_res_true.push_back(M1 - M2);
   sub_res_true.push_back(M3 - M4);
   sub_res_true.push_back(M1 - M4);
@@ -177,7 +182,7 @@ TEST_F(SimdHelperTest, MatrixAddSubTest) {
   simd::Matrix<3, 3> Mb__({M2, M4, M4, M2});
 #endif
 
-  std::vector<Eigen::Matrix3f> res;
+  std::vector<EigenMat3x3> res;
   const auto add__ = Ma__ + Mb__;
   add__.StoreData(&res);
   for (int i = 0; i < 3; ++i)
@@ -193,7 +198,7 @@ TEST_F(SimdHelperTest, MatrixAddSubTest) {
         EXPECT_FLOAT_EQ(sub_res_true[k](i, j), res[k](i, j));
 }
 
-TEST_F(SimdHelperTest, VectorCompareTest) {
+TEST_F(CalculationTest, VectorCompareTest) {
   float v1 = 4;
   float v2 = -3;
   float v3 = 9;
@@ -237,7 +242,7 @@ TEST_F(SimdHelperTest, VectorCompareTest) {
     EXPECT_FLOAT_EQ(lt_true[k], res[k]);
 }
 
-TEST_F(SimdHelperTest, VectorSignTest) {
+TEST_F(CalculationTest, VectorSignTest) {
   float v1 = 4;
   float v2 = -3;
   float v3 = 9;
@@ -265,7 +270,7 @@ TEST_F(SimdHelperTest, VectorSignTest) {
     EXPECT_FLOAT_EQ(sign_true[k], res[k]);
 }
 
-TEST_F(SimdHelperTest, VectorAbsTest) {
+TEST_F(CalculationTest, VectorAbsTest) {
   float v1 = 4;
   float v2 = -3;
   float v3 = 9;
@@ -293,7 +298,7 @@ TEST_F(SimdHelperTest, VectorAbsTest) {
     EXPECT_FLOAT_EQ(abs_true[k], res[k]);
 }
 
-TEST_F(SimdHelperTest, VectorSqrtTest) {
+TEST_F(CalculationTest, VectorSqrtTest) {
   float v1 = 4;
   float v2 = 9;
   float v3 = 16;
@@ -321,7 +326,7 @@ TEST_F(SimdHelperTest, VectorSqrtTest) {
     EXPECT_FLOAT_EQ(sqrt_true[k], res[k]);
 }
 
-TEST_F(SimdHelperTest, MemoryAlignmentTest) {
+TEST_F(CalculationTest, MemoryAlignmentTest) {
   const size_t alignment = 32;
   const size_t num_data = 10000;
 
@@ -345,3 +350,5 @@ TEST_F(SimdHelperTest, MemoryAlignmentTest) {
   is_aligned = (reinterpret_cast<std::uintptr_t>(aligned_int) % alignment == 0);
   EXPECT_TRUE(is_aligned);
 }
+
+}  // namespace simd_helper
