@@ -39,7 +39,7 @@ find_package(simd_helper REQUIRED)
 
 ...
 # Link `simd_helper` for your library or executable
-target_link_libraries(${YOUR_EXECUTABLE_NAME} PUBLIC simd_helper)
+target_link_libraries(${YOUR_EXECUTABLE_NAME} PUBLIC simd_helper::simd_helper)
 ...
 ```
 
