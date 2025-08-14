@@ -63,6 +63,7 @@ namespace simd {
 
 template <int kRow, int kCol>
 class MatrixBase;
+
 using Scalar = MatrixBase<1, 1>;
 
 template <>
@@ -94,9 +95,9 @@ class MatrixBase<1, 1> {
   }
 #endif
 
-  MatrixBase<1, 1>(const float* rhs) { data_ = _s_load(rhs); }
-
   MatrixBase<1, 1>(const MatrixBase<1, 1>& rhs) { data_ = rhs.data_; }
+
+  MatrixBase<1, 1>(const float* rhs) { data_ = _s_load(rhs); }
 
   MatrixBase<1, 1>(const _s_data& rhs) { data_ = rhs; }
 
@@ -319,6 +320,12 @@ class MatrixBase<1, 1> {
  private:
   _s_data data_;
 };
+
+Scalar abs(const Scalar& input) { return input.abs(); }
+
+Scalar sqrt(const Scalar& input) { return input.sqrt(); }
+
+Scalar exp(const Scalar& input) { return input.exp(); }
 
 }  // namespace simd
 

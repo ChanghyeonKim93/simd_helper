@@ -31,6 +31,11 @@ class MatrixBase {
       for (int c = 0; c < kCol; ++c) data_[r][c] = Scalar(0.0f);
   }
 
+  MatrixBase(const float input) {
+    for (int r = 0; r < kRow; ++r)
+      for (int c = 0; c < kCol; ++c) data_[r][c] = Scalar(input);
+  }
+
   MatrixBase(const MatrixBase& rhs) {
     for (int r = 0; r < kRow; ++r)
       for (int c = 0; c < kCol; ++c) data_[r][c] = rhs.data_[r][c];
@@ -83,6 +88,8 @@ class MatrixBase {
   }
 
   // Arithmetic operations
+  MatrixBase operator+() const { return *this; }
+
   MatrixBase operator-() const { return MatrixBase(_s_sub(__zero, data_)); }
 
   // Arithmetic operations: element-wise operations
@@ -107,15 +114,15 @@ class MatrixBase {
     return res;
   }
 
-  friend MatrixBase operator*(const float lhs, const MatrixBase& rhs) {
-    return MatrixBase(_s_mul(rhs.data_, _s_set1(lhs)));
-  }
-
   MatrixBase operator/(const float rhs) const {
     MatrixBase res = *this;
     for (int r = 0; r < kRow; ++r)
       for (int c = 0; c < kCol; ++c) res.data_[r][c] /= rhs;
     return res;
+  }
+
+  friend MatrixBase operator*(const float lhs, const MatrixBase& rhs) {
+    return MatrixBase(_s_mul(rhs.data_, _s_set1(lhs)));
   }
 
   // Arithmetic operations: matrix-matrix operations
@@ -133,13 +140,13 @@ class MatrixBase {
     return res;
   }
 
-  MatrixBase& operator+=(const MatrixBase& rhs) const {
+  MatrixBase& operator+=(const MatrixBase& rhs) {
     for (int r = 0; r < kRow; ++r)
       for (int c = 0; c < kCol; ++c) data_[r][c] += rhs.data_[r][c];
     return *this;
   }
 
-  MatrixBase& operator-=(const MatrixBase& rhs) const {
+  MatrixBase& operator-=(const MatrixBase& rhs) {
     for (int r = 0; r < kRow; ++r)
       for (int c = 0; c < kCol; ++c) data_[r][c] -= rhs.data_[r][c];
     return *this;
@@ -176,19 +183,19 @@ class MatrixBase {
       for (int c = 0; c < kCol; ++c) data_[r][c] = Scalar(0.0f);
   }
 
-  MatrixBase cwiseSqrt() {
+  MatrixBase cwiseSqrt() const {
     MatrixBase res{MatrixBase::Zeros()};
     for (int r = 0; r < kRow; ++r)
       for (int c = 0; c < kCol; ++c) res(r, c) = data_[r][c].sqrt();
   }
 
-  MatrixBase cwiseSign() {
+  MatrixBase cwiseSign() const {
     MatrixBase res{MatrixBase::Zeros()};
     for (int r = 0; r < kRow; ++r)
       for (int c = 0; c < kCol; ++c) res(r, c) = data_[r][c].sign();
   }
 
-  MatrixBase cwiseAbs() {
+  MatrixBase cwiseAbs() const {
     MatrixBase res{MatrixBase::Zeros()};
     for (int r = 0; r < kRow; ++r)
       for (int c = 0; c < kCol; ++c) res(r, c) = data_[r][c].abs();
@@ -229,42 +236,16 @@ class MatrixBase {
 };
 
 template <int kRow, int kCol>
-class Matrix : public MatrixBase<kRow, kCol> {
-  using EigenMatrix = typename MatrixBase<kRow, kCol>::EigenMatrix;
-
- public:
-  Matrix() : MatrixBase<kRow, kCol>() {}
-
-  Matrix(const Matrix& rhs) : MatrixBase<kRow, kCol>(rhs) {}
-
-  Matrix(const EigenMatrix& matrix) : MatrixBase<kRow, kCol>(matrix) {}
-
-  Matrix(const std::vector<EigenMatrix>& matrices)
-      : MatrixBase<kRow, kCol>(matrices) {}
-
-  Matrix(const std::vector<float*>& multi_elements)
-      : MatrixBase<kRow, kCol>(multi_elements) {}
-};
+using Matrix = MatrixBase<kRow, kCol>;
 
 // Specialization for Nx1 matrix (== vector)
 template <int kDim>
 class Vector : public MatrixBase<kDim, 1> {
+  using Base = MatrixBase<kDim, 1>;
   using EigenMatrix = typename MatrixBase<kDim, 1>::EigenMatrix;
 
  public:
-  Vector() : MatrixBase<kDim, 1>() {}
-
-  Vector(const Vector& rhs) : MatrixBase<kDim, 1>(rhs) {}
-
-  Vector(const MatrixBase<kDim, 1>& rhs) : MatrixBase<kDim, 1>(rhs) {}
-
-  Vector(const EigenMatrix& matrix) : MatrixBase<kDim, 1>(matrix) {}
-
-  Vector(const std::vector<EigenMatrix>& matrices)
-      : MatrixBase<kDim, 1>(matrices) {}
-
-  Vector(const std::vector<float*>& multi_elements)
-      : MatrixBase<kDim, 1>(multi_elements) {}
+  using MatrixBase<kDim, 1>::MatrixBase;
 
   // Accessor methods
   Scalar& operator()(const int r) {
@@ -277,13 +258,13 @@ class Vector : public MatrixBase<kDim, 1> {
 
   Scalar dot(const MatrixBase<kDim, 1>& rhs) const {
     Scalar res(0.0f);
-    for (int i = 0; i < kDim; ++i) res += (*this)(i, 0) * rhs.data_[i][0];
+    for (int i = 0; i < kDim; ++i) res += (*this)(i, 0) * rhs(i, 0);
     return res;
   }
 
   Scalar dot(const MatrixBase<1, kDim>& rhs) const {
     Scalar res(0.0f);
-    for (int i = 0; i < kDim; ++i) res += (*this)(i, 0) * rhs.data_[0][i];
+    for (int i = 0; i < kDim; ++i) res += (*this)(i, 0) * *rhs(0, i);
     return res;
   }
 
@@ -293,12 +274,6 @@ class Vector : public MatrixBase<kDim, 1> {
     return res;
   }
 };
-
-Scalar abs(const Scalar& input) { return input.abs(); }
-
-Scalar sqrt(const Scalar& input) { return input.sqrt(); }
-
-Scalar exp(const Scalar& input) { return input.exp(); }
 
 }  // namespace simd
 
