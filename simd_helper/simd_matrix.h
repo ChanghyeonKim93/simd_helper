@@ -163,6 +163,13 @@ class MatrixBase {
     return res;
   }
 
+  inline MatrixBase<kRow, kCol> operator*(const MatrixBase<1, 1>& rhs) const {
+    MatrixBase<kRow, kCol> res(*this);
+    for (int r = 0; r < kRow; ++r)
+      for (int c = 0; c < kCol; ++c) res(r, c) *= rhs;
+    return res;
+  }
+
   // Some matrix operations
   inline MatrixBase<kCol, kRow> transpose() const {
     MatrixBase<kCol, kRow> res;
@@ -248,6 +255,8 @@ class Vector : public MatrixBase<kDim, 1> {
 
  public:
   using MatrixBase<kDim, 1>::MatrixBase;
+
+  Vector(const MatrixBase<kDim, 1>& other) : MatrixBase<kDim, 1>(other) {}
 
   // Accessor methods
   Scalar& operator()(const int r) {

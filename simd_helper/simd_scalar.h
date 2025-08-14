@@ -321,11 +321,11 @@ class MatrixBase<1, 1> {
   _s_data data_;
 };
 
-Scalar abs(const Scalar& input) { return input.abs(); }
+inline Scalar abs(const Scalar& input) { return input.abs(); }
 
-Scalar sqrt(const Scalar& input) { return input.sqrt(); }
+inline Scalar sqrt(const Scalar& input) { return input.sqrt(); }
 
-Scalar exp(const Scalar& input) { return input.exp(); }
+inline Scalar exp(const Scalar& input) { return input.exp(); }
 
 }  // namespace simd
 
