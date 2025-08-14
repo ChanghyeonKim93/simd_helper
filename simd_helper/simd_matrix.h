@@ -171,12 +171,14 @@ class MatrixBase {
     return res;
   }
 
-  inline Scalar norm() const {
+  inline Scalar squaredNorm() const {
     Scalar res(0.0f);
     for (int r = 0; r < kRow; ++r)
       for (int c = 0; c < kCol; ++c) res += data_[r][c] * data_[r][c];
     return res;
   }
+
+  inline Scalar norm() const { return this->squaredNorm().sqrt(); }
 
   void setZero() {
     for (int r = 0; r < kRow; ++r)
@@ -272,6 +274,32 @@ class Vector : public MatrixBase<kDim, 1> {
     Scalar res(0.0f);
     for (int i = 0; i < kDim; ++i) res += (*this)(i, 0) * rhs.data_(i);
     return res;
+  }
+
+  // Specialized operations for 3D vector
+  template <int D = kDim>
+  typename std::enable_if<D == 3, Vector>::type cross(const Vector& rhs) const {
+    Vector result;
+    result(0) = (*this)(1) * rhs(2) - (*this)(2) * rhs(1);
+    result(1) = (*this)(2) * rhs(0) - (*this)(0) * rhs(2);
+    result(2) = (*this)(0) * rhs(1) - (*this)(1) * rhs(0);
+    return result;
+  }
+
+  template <int D = kDim>
+  typename std::enable_if<D == 3, Vector>::type toSkewSymmetricMatrix(
+      const Vector& rhs) const {
+    Matrix<3, 3> result(0.0f);
+    const Scalar& x = (*this)(0);
+    const Scalar& y = (*this)(1);
+    const Scalar& z = (*this)(2);
+    result(0, 1) = -z;
+    result(0, 2) = y;
+    result(1, 0) = z;
+    result(1, 2) = -x;
+    result(2, 0) = -y;
+    result(2, 1) = x;
+    return result;
   }
 };
 
