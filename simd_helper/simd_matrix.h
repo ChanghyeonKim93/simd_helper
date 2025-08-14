@@ -13,8 +13,8 @@ class MatrixBase {
   using EigenMatrix = Eigen::Matrix<float, kRow, kCol>;
 
  public:
-  // static member methods
-  static inline size_t GetDataStride() { return __SIMD_DATA_STRIDE; }
+  // static members
+  static const size_t data_stride{__SIMD_DATA_STRIDE};
 
   static inline MatrixBase Zeros() { return MatrixBase(0.0f); }
 
@@ -42,13 +42,13 @@ class MatrixBase {
   }
 
   MatrixBase(const std::vector<EigenMatrix>& matrices) {
-    if (matrices.size() != GetDataStride())
+    if (matrices.size() != data_stride)
       throw std::runtime_error("Wrong number of data.");
 
-    float buf[GetDataStride()];
+    float buf[data_stride];
     for (int r = 0; r < kRow; ++r) {
       for (int c = 0; c < kCol; ++c) {
-        for (size_t k = 0; k < simd::Scalar::GetDataStride(); ++k)
+        for (size_t k = 0; k < simd::Scalar::data_stride; ++k)
           buf[k] = matrices[k](r, c);
         data_[r][c] = Scalar(buf);
       }
@@ -197,7 +197,6 @@ class MatrixBase {
 
   // Store SIMD data to normal memory
   void StoreData(std::vector<EigenMatrix>* multi_matrices) const {
-    const auto data_stride = GetDataStride();
     if (multi_matrices->size() != data_stride)
       multi_matrices->resize(data_stride);
     float buf[data_stride];
@@ -218,7 +217,7 @@ class MatrixBase {
     std::vector<EigenMatrix> multi_matrices;
     simd_mat.StoreData(&multi_matrices);
     ss << "{";
-    for (int i = 0; i < MatrixBase::GetDataStride(); ++i)
+    for (int i = 0; i < MatrixBase::data_stride; ++i)
       ss << "[" << multi_matrices[i] << "]\n";
     ss << "}" << std::endl;
     std::cerr << ss.str();

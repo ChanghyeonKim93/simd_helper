@@ -69,7 +69,7 @@ template <>
 class MatrixBase<1, 1> {
  public:
   // static member methods
-  static inline size_t GetDataStride() { return __SIMD_DATA_STRIDE; }
+  static const size_t data_stride{__SIMD_DATA_STRIDE};
 
   static inline MatrixBase<1, 1> Zeros() { return MatrixBase<1, 1>(0.0f); }
 
@@ -180,6 +180,8 @@ class MatrixBase<1, 1> {
   }
 
   // Arithmetic operations
+  MatrixBase<1, 1> operator+() const { return *this; }
+
   MatrixBase<1, 1> operator-() const {
     return MatrixBase<1, 1>(_s_sub(__zero, data_));
   }
@@ -281,9 +283,10 @@ class MatrixBase<1, 1> {
     return MatrixBase<1, 1>(result);
   }
 
-  // Approximated MatrixBase<1, 1> exp. by using Taylor series expansion up to
-  // 8-th order
-  //   e^x = 1+x+x^2/2!+x^3/3!+x^4/4!+x^5/5!+x^6/6!+x^7/7!+x^8/8!
+  /// @brief Approximated MatrixBase<1, 1> exp. by using Taylor series expansion
+  /// up to 8-th order.
+  ///
+  /// e^x = 1+x+x^2/2!+x^3/3!+x^4/4!+x^5/5!+x^6/6!+x^7/7!+x^8/8!
   MatrixBase<1, 1> exp() const {
     const auto& x = data_;
     _s_data term = __one;

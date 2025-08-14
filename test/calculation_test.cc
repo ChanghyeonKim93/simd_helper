@@ -80,7 +80,7 @@ TEST_F(CalculationTest, SimdDataLoadAndSaveTest) {
   simd::Scalar v__(value);
   float buf[8];
   v__.StoreData(buf);
-  for (int k = 0; k < simd::Scalar::GetDataStride(); ++k)
+  for (size_t k = 0; k < simd::Scalar::data_stride; ++k)
     EXPECT_FLOAT_EQ(value[k], buf[k]);
 }
 
@@ -93,7 +93,7 @@ TEST_F(CalculationTest, MatrixVectorMultiplyTest) {
   std::vector<EigenVec3> res;
   Mv__.StoreData(&res);
   for (int i = 0; i < 3; ++i)
-    for (int k = 0; k < simd::Scalar::GetDataStride(); ++k)
+    for (size_t k = 0; k < simd::Scalar::data_stride; ++k)
       EXPECT_FLOAT_EQ(res_true[k](i), res[k](i));
 }
 
@@ -134,13 +134,13 @@ TEST_F(CalculationTest, VectorAddSubTest) {
   const auto add__ = va__ + vb__;
   add__.StoreData(&res);
   for (int i = 0; i < 3; ++i)
-    for (int k = 0; k < simd::Scalar::GetDataStride(); ++k)
+    for (size_t k = 0; k < simd::Scalar::data_stride; ++k)
       EXPECT_FLOAT_EQ(add_res_true[k](i), res[k](i));
 
   const auto sub__ = va__ - vb__;
   sub__.StoreData(&res);
   for (int i = 0; i < 3; ++i)
-    for (int k = 0; k < simd::Scalar::GetDataStride(); ++k)
+    for (size_t k = 0; k < simd::Scalar::data_stride; ++k)
       EXPECT_FLOAT_EQ(sub_res_true[k](i), res[k](i));
 }
 
@@ -187,14 +187,14 @@ TEST_F(CalculationTest, MatrixAddSubTest) {
   add__.StoreData(&res);
   for (int i = 0; i < 3; ++i)
     for (int j = 0; j < 3; ++j)
-      for (int k = 0; k < simd::Scalar::GetDataStride(); ++k)
+      for (size_t k = 0; k < simd::Scalar::data_stride; ++k)
         EXPECT_FLOAT_EQ(add_res_true[k](i, j), res[k](i, j));
 
   const auto sub__ = Ma__ - Mb__;
   sub__.StoreData(&res);
   for (int i = 0; i < 3; ++i)
     for (int j = 0; j < 3; ++j)
-      for (int k = 0; k < simd::Scalar::GetDataStride(); ++k)
+      for (size_t k = 0; k < simd::Scalar::data_stride; ++k)
         EXPECT_FLOAT_EQ(sub_res_true[k](i, j), res[k](i, j));
 }
 
@@ -233,12 +233,12 @@ TEST_F(CalculationTest, VectorCompareTest) {
   float res[8];
   const auto gt__ = va__ > vb__;
   gt__.StoreData(res);
-  for (int k = 0; k < simd::Scalar::GetDataStride(); ++k)
+  for (size_t k = 0; k < simd::Scalar::data_stride; ++k)
     EXPECT_FLOAT_EQ(gt_true[k], res[k]);
 
   const auto lt__ = va__ < vb__;
   lt__.StoreData(res);
-  for (int k = 0; k < simd::Scalar::GetDataStride(); ++k)
+  for (size_t k = 0; k < simd::Scalar::data_stride; ++k)
     EXPECT_FLOAT_EQ(lt_true[k], res[k]);
 }
 
@@ -266,7 +266,7 @@ TEST_F(CalculationTest, VectorSignTest) {
   const auto sign__ = va__.sign();
   sign__.StoreData(res);
 
-  for (int k = 0; k < simd::Scalar::GetDataStride(); ++k)
+  for (size_t k = 0; k < simd::Scalar::data_stride; ++k)
     EXPECT_FLOAT_EQ(sign_true[k], res[k]);
 }
 
@@ -294,7 +294,7 @@ TEST_F(CalculationTest, VectorAbsTest) {
   const auto abs__ = va__.abs();
   abs__.StoreData(res);
 
-  for (int k = 0; k < simd::Scalar::GetDataStride(); ++k)
+  for (size_t k = 0; k < simd::Scalar::data_stride; ++k)
     EXPECT_FLOAT_EQ(abs_true[k], res[k]);
 }
 
@@ -322,7 +322,7 @@ TEST_F(CalculationTest, VectorSqrtTest) {
   const auto sqrt__ = va__.sqrt();
   sqrt__.StoreData(res);
 
-  for (int k = 0; k < simd::Scalar::GetDataStride(); ++k)
+  for (size_t k = 0; k < simd::Scalar::data_stride; ++k)
     EXPECT_FLOAT_EQ(sqrt_true[k], res[k]);
 }
 
