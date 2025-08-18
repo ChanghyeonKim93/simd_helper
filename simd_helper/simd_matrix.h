@@ -9,6 +9,59 @@ namespace simd {
 
 template <int kRow, int kCol>
 class MatrixBase {
+ private:
+  /// @brief Proxy class for block operations
+  /// @tparam kBlockRow the number of rows in the block
+  /// @tparam kBlockCol the number of columns in the block
+  template <int kBlockRow, int kBlockCol>
+  class BlockMatrix {
+   public:
+    BlockMatrix(MatrixBase* original_matrix, const int start_row,
+                const int start_col)
+        : original_matrix_(original_matrix),
+          start_row_(start_row),
+          start_col_(start_col) {}
+
+    const Scalar& operator()(const int r, const int c) const {
+      return (*original_matrix_)(start_row_ + r, start_col_ + c);
+    }
+
+    Scalar& operator()(const int r, const int c) {
+      return (*original_matrix_)(start_row_ + r, start_col_ + c);
+    }
+
+    template <int C = kBlockCol>
+    typename std::enable_if<C == 1, const Scalar&>::type operator()(
+        const int r) const {
+      return (*original_matrix_)(start_row_ + r, start_col_);
+    }
+
+    template <int C = kBlockCol>
+    typename std::enable_if<C == 1, Scalar&>::type operator()(const int r) {
+      return (*original_matrix_)(start_row_ + r, start_col_);
+    }
+
+    BlockMatrix& operator=(const MatrixBase<kBlockRow, kBlockCol>& rhs) {
+      for (int r = 0; r < kBlockRow; ++r)
+        for (int c = 0; c < kBlockCol; ++c)
+          (*original_matrix_)(r + start_row_, c + start_col_) = rhs(r, c);
+      return *this;
+    }
+
+    // Conversion operator to MatrixBase
+    operator MatrixBase<kBlockRow, kBlockCol>() const {
+      MatrixBase<kBlockRow, kBlockCol> result;
+      for (int r = 0; r < kBlockRow; ++r)
+        for (int c = 0; c < kBlockCol; ++c) result(r, c) = (*this)(r, c);
+      return result;
+    }
+
+   private:
+    MatrixBase* original_matrix_{nullptr};
+    int start_row_{-1};
+    int start_col_{-1};
+  };
+
  protected:
   using EigenMatrix = Eigen::Matrix<float, kRow, kCol>;
 
@@ -85,6 +138,22 @@ class MatrixBase {
 
   const Scalar& operator()(const int r, const int c) const {
     return data_[r][c];
+  }
+
+  template <int kBlockRow, int kBlockCol>
+  inline BlockMatrix<kBlockRow, kBlockCol> block(const int start_row,
+                                                 const int start_col) {
+    return BlockMatrix<kBlockRow, kBlockCol>(this, start_row, start_col);
+  }
+
+  template <int kRhsRow, int kRhsCol>
+  inline MatrixBase<kRhsRow, kRhsCol> block(const int start_row,
+                                            const int start_col) const {
+    MatrixBase<kRhsRow, kRhsCol> res;
+    for (int r = 0; r < kRhsRow; ++r)
+      for (int c = 0; c < kRhsCol; ++c)
+        res(r, c) = data_[start_row + r][start_col + c];
+    return res;
   }
 
   // Arithmetic operations
