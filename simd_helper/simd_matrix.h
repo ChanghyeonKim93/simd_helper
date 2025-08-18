@@ -8,6 +8,13 @@
 namespace simd {
 
 template <int kRow, int kCol>
+class Matrix;
+
+/// @brief Vector is a special case of Matrix with one column.
+template <int kDim>
+using Vector = Matrix<kDim, 1>;
+
+template <int kRow, int kCol>
 class Matrix {
  private:
   /// @brief Proxy class for block operations
@@ -41,19 +48,33 @@ class Matrix {
       return (*original_matrix_)(start_row_ + r, start_col_);
     }
 
-    BlockMatrix& operator=(const Matrix<kBlockRow, kBlockCol>& rhs) {
+    template <int BR = kBlockRow, int BC = kBlockCol>
+    typename std::enable_if<!(BR == 1 && BC == 1), BlockMatrix&>::type
+    operator=(const Matrix<kBlockRow, kBlockCol>& rhs) {
       for (int r = 0; r < kBlockRow; ++r)
         for (int c = 0; c < kBlockCol; ++c)
           (*original_matrix_)(r + start_row_, c + start_col_) = rhs(r, c);
       return *this;
     }
 
-    // Conversion operator to MatrixBase
+    template <int BR = kBlockRow, int BC = kBlockCol>
+    typename std::enable_if<BR == 1 && BC == 1, BlockMatrix&>::type operator=(
+        const Scalar& rhs) {
+      (*original_matrix_)(start_row_, start_col_) = rhs;
+      return *this;
+    }
+
+    // Conversion operator to Matrix
     operator Matrix<kBlockRow, kBlockCol>() const {
       Matrix<kBlockRow, kBlockCol> result;
       for (int r = 0; r < kBlockRow; ++r)
         for (int c = 0; c < kBlockCol; ++c) result(r, c) = (*this)(r, c);
       return result;
+    }
+
+    template <int BR = kBlockRow, int BC = kBlockCol>
+    operator typename std::enable_if<BR == 1 && BC == 1, Scalar>::type() const {
+      return (*original_matrix_)(start_row_, start_col_);
     }
 
    private:
@@ -90,6 +111,13 @@ class Matrix {
   Matrix(const Matrix& rhs) {
     for (int r = 0; r < kRow; ++r)
       for (int c = 0; c < kCol; ++c) data_[r][c] = rhs.data_[r][c];
+  }
+
+  template <int OtherRow, int OtherCol>
+  Matrix(const typename Matrix<OtherRow, OtherCol>::template BlockMatrix<
+         kRow, kCol>& block) {
+    for (int r = 0; r < kRow; ++r)
+      for (int c = 0; c < kCol; ++c) (*this)(r, c) = block(r, c);
   }
 
   Matrix(const EigenMatrix& matrix) {
@@ -132,6 +160,7 @@ class Matrix {
   }
 
   // Accessor methods
+
   Scalar& operator()(const int r, const int c) { return data_[r][c]; }
 
   const Scalar& operator()(const int r, const int c) const {
@@ -155,11 +184,13 @@ class Matrix {
   }
 
   // Arithmetic operations
+
   Matrix operator+() const { return *this; }
 
   Matrix operator-() const { return Matrix(_s_sub(__zero, data_)); }
 
   // Arithmetic operations: element-wise operations
+
   Matrix operator+(const float rhs) const {
     Matrix res = *this;
     for (int r = 0; r < kRow; ++r)
@@ -188,8 +219,25 @@ class Matrix {
     return res;
   }
 
+  Matrix operator*(const Scalar& rhs) const {
+    Matrix res = *this;
+    for (int r = 0; r < kRow; ++r)
+      for (int c = 0; c < kCol; ++c) res.data_[r][c] *= rhs;
+    return res;
+  }
+
   friend Matrix operator*(const float lhs, const Matrix& rhs) {
-    return MatrixBase(_s_mul(rhs.data_, _s_set1(lhs)));
+    Matrix res = rhs;
+    for (int r = 0; r < kRow; ++r)
+      for (int c = 0; c < kCol; ++c) res.data_[r][c] *= Scalar(lhs);
+    return res;
+  }
+
+  friend Matrix operator*(const Scalar& lhs, const Matrix& rhs) {
+    Matrix res = rhs;
+    for (int r = 0; r < kRow; ++r)
+      for (int c = 0; c < kCol; ++c) res.data_[r][c] *= lhs;
+    return res;
   }
 
   // Arithmetic operations: matrix-matrix operations
@@ -230,10 +278,11 @@ class Matrix {
     return res;
   }
 
-  inline Matrix<kRow, kCol> operator*(const Matrix<1, 1>& rhs) const {
-    Matrix<kRow, kCol> res(*this);
-    for (int r = 0; r < kRow; ++r)
-      for (int c = 0; c < kCol; ++c) res(r, c) *= rhs;
+  template <int R = kRow>
+  typename std::enable_if<R == 1, Scalar>::type operator*(
+      const Matrix<kCol, 1>& rhs) const {
+    Scalar res(0.0f);
+    for (int c = 0; c < kCol; ++c) res += data_[0][c] * rhs(c);
     return res;
   }
 
@@ -278,6 +327,62 @@ class Matrix {
     return res;
   }
 
+  /*
+   Vector specialized operations
+  */
+  template <int C = kCol>
+  typename std::enable_if<C == 1, Scalar&>::type operator()(const int r) {
+    return data_[r][0];
+  }
+
+  template <int C = kCol>
+  typename std::enable_if<C == 1, const Scalar&>::type operator()(
+      const int r) const {
+    return data_[r][0];
+  }
+
+  template <int C = kCol>
+  typename std::enable_if<C == 1, Scalar>::type dot(
+      const Matrix<kRow, 1>& rhs) const {
+    return this->transpose() * rhs;
+  }
+
+  template <int R = kRow>
+  typename std::enable_if<R == 1, Scalar>::type dot(
+      const Matrix<1, kCol>& rhs) const {
+    return (*this) * rhs.transpose();
+  }
+
+  template <int R = kRow, int C = kCol>
+  typename std::enable_if<R == 3 && C == 1, Matrix<3, 1>>::type cross(
+      const Matrix<3, 1>& rhs) const {
+    Matrix<3, 1> result;
+    result(0, 0) = (*this)(1, 0) * rhs(2, 0) - (*this)(2, 0) * rhs(1, 0);
+    result(1, 0) = (*this)(2, 0) * rhs(0, 0) - (*this)(0, 0) * rhs(2, 0);
+    result(2, 0) = (*this)(0, 0) * rhs(1, 0) - (*this)(1, 0) * rhs(0, 0);
+    return result;
+  }
+
+  template <int R = kRow, int C = kCol>
+  typename std::enable_if<R == 3 && C == 1, Matrix<3, 3>>::type hat() const {
+    Matrix<3, 3> result;
+    const Scalar zero(0.0f);
+    const Scalar& x = data_[0][0];
+    const Scalar& y = data_[1][0];
+    const Scalar& z = data_[2][0];
+
+    result(0, 0) = zero;
+    result(0, 1) = -z;
+    result(0, 2) = y;
+    result(1, 0) = z;
+    result(1, 1) = zero;
+    result(1, 2) = -x;
+    result(2, 0) = -y;
+    result(2, 1) = x;
+    result(2, 2) = zero;
+    return result;
+  }
+
   // Store SIMD data to normal memory
   void StoreData(std::vector<EigenMatrix>* multi_matrices) const {
     if (multi_matrices->size() != data_stride)
@@ -309,70 +414,6 @@ class Matrix {
 
  protected:
   Scalar data_[kRow][kCol];
-};
-
-// Specialization for Nx1 matrix (== vector)
-template <int kDim>
-class Vector : public Matrix<kDim, 1> {
-  using EigenMatrix = typename Matrix<kDim, 1>::EigenMatrix;
-
- public:
-  using Matrix<kDim, 1>::Matrix;
-
-  Vector(const Matrix<kDim, 1>& other) : Matrix<kDim, 1>(other) {}
-
-  // Accessor methods
-  Scalar& operator()(const int r) {
-    return this->Matrix<kDim, 1>::operator()(r, 0);
-  }
-
-  const Scalar& operator()(const int r) const {
-    return this->Matrix<kDim, 1>::operator()(r, 0);
-  }
-
-  Scalar dot(const Matrix<kDim, 1>& rhs) const {
-    Scalar res(0.0f);
-    for (int i = 0; i < kDim; ++i) res += (*this)(i, 0) * rhs(i, 0);
-    return res;
-  }
-
-  Scalar dot(const Matrix<1, kDim>& rhs) const {
-    Scalar res(0.0f);
-    for (int i = 0; i < kDim; ++i) res += (*this)(i, 0) * *rhs(0, i);
-    return res;
-  }
-
-  Scalar dot(const Vector& rhs) const {
-    Scalar res(0.0f);
-    for (int i = 0; i < kDim; ++i) res += (*this)(i, 0) * rhs.data_(i);
-    return res;
-  }
-
-  // Specialized operations for 3D vector
-  template <int D = kDim>
-  typename std::enable_if<D == 3, Vector>::type cross(const Vector& rhs) const {
-    Vector result;
-    result(0) = (*this)(1) * rhs(2) - (*this)(2) * rhs(1);
-    result(1) = (*this)(2) * rhs(0) - (*this)(0) * rhs(2);
-    result(2) = (*this)(0) * rhs(1) - (*this)(1) * rhs(0);
-    return result;
-  }
-
-  template <int D = kDim>
-  typename std::enable_if<D == 3, Vector>::type toSkewSymmetricMatrix(
-      const Vector& rhs) const {
-    Matrix<3, 3> result(0.0f);
-    const Scalar& x = (*this)(0);
-    const Scalar& y = (*this)(1);
-    const Scalar& z = (*this)(2);
-    result(0, 1) = -z;
-    result(0, 2) = y;
-    result(1, 0) = z;
-    result(1, 2) = -x;
-    result(2, 0) = -y;
-    result(2, 1) = x;
-    return result;
-  }
 };
 
 }  // namespace simd
