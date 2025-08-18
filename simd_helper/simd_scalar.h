@@ -62,30 +62,29 @@ _s_data __zero{_s_set1(0.0f)};
 namespace simd {
 
 template <int kRow, int kCol>
-class MatrixBase;
+class Matrix;
 
-using Scalar = MatrixBase<1, 1>;
+using Scalar = Matrix<1, 1>;
 
 template <>
-class MatrixBase<1, 1> {
+class Matrix<1, 1> {
  public:
   // static member methods
   static const size_t data_stride{__SIMD_DATA_STRIDE};
 
-  static inline MatrixBase<1, 1> Zeros() { return MatrixBase<1, 1>(0.0f); }
+  static inline Matrix<1, 1> Zeros() { return Matrix<1, 1>(0.0f); }
 
-  static inline MatrixBase<1, 1> Ones() { return MatrixBase<1, 1>(1.0f); }
+  static inline Matrix<1, 1> Ones() { return Matrix<1, 1>(1.0f); }
 
  public:
   // Initialization & Assignment operations
-  MatrixBase<1, 1>() { data_ = __zero; }
+  Matrix<1, 1>() { data_ = __zero; }
 
-  MatrixBase<1, 1>(const float input) { data_ = _s_set1(input); }
+  Matrix<1, 1>(const float input) { data_ = _s_set1(input); }
 
 #if CPU_ARCH_AMD64
-  MatrixBase<1, 1>(const float n1, const float n2, const float n3,
-                   const float n4, const float n5, const float n6,
-                   const float n7, const float n8) {
+  Matrix<1, 1>(const float n1, const float n2, const float n3, const float n4,
+               const float n5, const float n6, const float n7, const float n8) {
     data_ = _s_set(n8, n7, n6, n5, n4, n3, n2, n1);
   }
 #elif CPU_ARCH_ARM
@@ -95,24 +94,24 @@ class MatrixBase<1, 1> {
   }
 #endif
 
-  MatrixBase<1, 1>(const MatrixBase<1, 1>& rhs) { data_ = rhs.data_; }
+  Matrix<1, 1>(const Matrix<1, 1>& rhs) { data_ = rhs.data_; }
 
-  MatrixBase<1, 1>(const float* rhs) { data_ = _s_load(rhs); }
+  Matrix<1, 1>(const float* rhs) { data_ = _s_load(rhs); }
 
-  MatrixBase<1, 1>(const _s_data& rhs) { data_ = rhs; }
+  Matrix<1, 1>(const _s_data& rhs) { data_ = rhs; }
 
-  MatrixBase<1, 1>& operator=(const float rhs) {
+  Matrix<1, 1>& operator=(const float rhs) {
     data_ = _s_set1(rhs);
     return *this;
   }
 
-  MatrixBase<1, 1>& operator=(const MatrixBase<1, 1>& rhs) {
+  Matrix<1, 1>& operator=(const Matrix<1, 1>& rhs) {
     data_ = rhs.data_;
     return *this;
   }
 
   // Comparison operations
-  MatrixBase<1, 1> operator<(const float scalar) const {
+  Matrix<1, 1> operator<(const float scalar) const {
 #if CPU_ARCH_AMD64
     return _mm256_and_ps(_mm256_cmp_ps(data_, _s_set1(scalar), _CMP_LT_OS),
                          __one);
@@ -121,7 +120,7 @@ class MatrixBase<1, 1> {
 #endif
   }
 
-  MatrixBase<1, 1> operator<=(const float scalar) const {
+  Matrix<1, 1> operator<=(const float scalar) const {
 #if CPU_ARCH_AMD64
     return _mm256_and_ps(_mm256_cmp_ps(data_, _s_set1(scalar), _CMP_LE_OS),
                          __one);
@@ -130,7 +129,7 @@ class MatrixBase<1, 1> {
 #endif
   }
 
-  MatrixBase<1, 1> operator>(const float scalar) const {
+  Matrix<1, 1> operator>(const float scalar) const {
 #if CPU_ARCH_AMD64
     return _mm256_and_ps(_mm256_cmp_ps(data_, _s_set1(scalar), _CMP_GT_OS),
                          __one);
@@ -139,7 +138,7 @@ class MatrixBase<1, 1> {
 #endif
   }
 
-  MatrixBase<1, 1> operator>=(const float scalar) const {
+  Matrix<1, 1> operator>=(const float scalar) const {
 #if CPU_ARCH_AMD64
     return _mm256_and_ps(_mm256_cmp_ps(data_, _s_set1(scalar), _CMP_GE_OS),
                          __one);
@@ -148,7 +147,7 @@ class MatrixBase<1, 1> {
 #endif
   }
 
-  MatrixBase<1, 1> operator<(const MatrixBase<1, 1>& rhs) const {
+  Matrix<1, 1> operator<(const Matrix<1, 1>& rhs) const {
 #if CPU_ARCH_AMD64
     return _mm256_and_ps(_mm256_cmp_ps(data_, rhs.data_, _CMP_LT_OS), __one);
 #elif CPU_ARCH_ARM
@@ -156,7 +155,7 @@ class MatrixBase<1, 1> {
 #endif
   }
 
-  MatrixBase<1, 1> operator<=(const MatrixBase<1, 1>& rhs) const {
+  Matrix<1, 1> operator<=(const Matrix<1, 1>& rhs) const {
 #if CPU_ARCH_AMD64
     return _mm256_and_ps(_mm256_cmp_ps(data_, rhs.data_, _CMP_LE_OS), __one);
 #elif CPU_ARCH_ARM
@@ -164,7 +163,7 @@ class MatrixBase<1, 1> {
 #endif
   }
 
-  MatrixBase<1, 1> operator>(const MatrixBase<1, 1>& rhs) const {
+  Matrix<1, 1> operator>(const Matrix<1, 1>& rhs) const {
 #if CPU_ARCH_AMD64
     return _mm256_and_ps(_mm256_cmp_ps(data_, rhs.data_, _CMP_GT_OS), __one);
 #elif CPU_ARCH_ARM
@@ -172,7 +171,7 @@ class MatrixBase<1, 1> {
 #endif
   }
 
-  MatrixBase<1, 1> operator>=(const MatrixBase<1, 1>& rhs) const {
+  Matrix<1, 1> operator>=(const Matrix<1, 1>& rhs) const {
 #if CPU_ARCH_AMD64
     return _mm256_and_ps(_mm256_cmp_ps(data_, rhs.data_, _CMP_GE_OS), __one);
 #elif CPU_ARCH_ARM
@@ -181,84 +180,78 @@ class MatrixBase<1, 1> {
   }
 
   // Arithmetic operations
-  MatrixBase<1, 1> operator+() const { return *this; }
+  Matrix<1, 1> operator+() const { return *this; }
 
-  MatrixBase<1, 1> operator-() const {
-    return MatrixBase<1, 1>(_s_sub(__zero, data_));
+  Matrix<1, 1> operator-() const { return Matrix<1, 1>(_s_sub(__zero, data_)); }
+
+  Matrix<1, 1> operator+(const float rhs) const {
+    return Matrix<1, 1>(_s_add(data_, _s_set1(rhs)));
   }
 
-  MatrixBase<1, 1> operator+(const float rhs) const {
-    return MatrixBase<1, 1>(_s_add(data_, _s_set1(rhs)));
+  Matrix<1, 1> operator-(const float rhs) const {
+    return Matrix<1, 1>(_s_sub(data_, _s_set1(rhs)));
   }
 
-  MatrixBase<1, 1> operator-(const float rhs) const {
-    return MatrixBase<1, 1>(_s_sub(data_, _s_set1(rhs)));
+  Matrix<1, 1> operator*(const float rhs) const {
+    return Matrix<1, 1>(_s_mul(data_, _s_set1(rhs)));
   }
 
-  MatrixBase<1, 1> operator*(const float rhs) const {
-    return MatrixBase<1, 1>(_s_mul(data_, _s_set1(rhs)));
+  Matrix<1, 1> operator/(const float rhs) const {
+    return Matrix<1, 1>(_s_div(data_, _s_set1(rhs)));
   }
 
-  MatrixBase<1, 1> operator/(const float rhs) const {
-    return MatrixBase<1, 1>(_s_div(data_, _s_set1(rhs)));
+  friend Matrix<1, 1> operator+(const float lhs, const Matrix<1, 1>& rhs) {
+    return Matrix<1, 1>(_s_add(_s_set1(lhs), rhs.data_));
   }
 
-  friend MatrixBase<1, 1> operator+(const float lhs,
-                                    const MatrixBase<1, 1>& rhs) {
-    return MatrixBase<1, 1>(_s_add(_s_set1(lhs), rhs.data_));
+  friend Matrix<1, 1> operator-(const float lhs, const Matrix<1, 1>& rhs) {
+    return Matrix<1, 1>(_s_sub(_s_set1(lhs), rhs.data_));
   }
 
-  friend MatrixBase<1, 1> operator-(const float lhs,
-                                    const MatrixBase<1, 1>& rhs) {
-    return MatrixBase<1, 1>(_s_sub(_s_set1(lhs), rhs.data_));
+  friend Matrix<1, 1> operator*(const float lhs, const Matrix<1, 1>& rhs) {
+    return Matrix<1, 1>(_s_mul(_s_set1(lhs), rhs.data_));
   }
 
-  friend MatrixBase<1, 1> operator*(const float lhs,
-                                    const MatrixBase<1, 1>& rhs) {
-    return MatrixBase<1, 1>(_s_mul(_s_set1(lhs), rhs.data_));
+  friend Matrix<1, 1> operator/(const float lhs, const Matrix<1, 1>& rhs) {
+    return Matrix<1, 1>(_s_div(_s_set1(lhs), rhs.data_));
   }
 
-  friend MatrixBase<1, 1> operator/(const float lhs,
-                                    const MatrixBase<1, 1>& rhs) {
-    return MatrixBase<1, 1>(_s_div(_s_set1(lhs), rhs.data_));
+  Matrix<1, 1> operator+(const Matrix<1, 1>& rhs) const {
+    return Matrix<1, 1>(_s_add(data_, rhs.data_));
   }
 
-  MatrixBase<1, 1> operator+(const MatrixBase<1, 1>& rhs) const {
-    return MatrixBase<1, 1>(_s_add(data_, rhs.data_));
+  Matrix<1, 1> operator-(const Matrix<1, 1>& rhs) const {
+    return Matrix<1, 1>(_s_sub(data_, rhs.data_));
   }
 
-  MatrixBase<1, 1> operator-(const MatrixBase<1, 1>& rhs) const {
-    return MatrixBase<1, 1>(_s_sub(data_, rhs.data_));
+  Matrix<1, 1> operator*(const Matrix<1, 1>& rhs) const {
+    return Matrix<1, 1>(_s_mul(data_, rhs.data_));
   }
 
-  MatrixBase<1, 1> operator*(const MatrixBase<1, 1>& rhs) const {
-    return MatrixBase<1, 1>(_s_mul(data_, rhs.data_));
-  }
-
-  MatrixBase<1, 1> operator/(const MatrixBase<1, 1>& rhs) const {
-    return MatrixBase<1, 1>(_s_div(data_, rhs.data_));
+  Matrix<1, 1> operator/(const Matrix<1, 1>& rhs) const {
+    return Matrix<1, 1>(_s_div(data_, rhs.data_));
   }
 
   // Compound assignment operations
-  MatrixBase<1, 1>& operator+=(const MatrixBase<1, 1>& rhs) {
+  Matrix<1, 1>& operator+=(const Matrix<1, 1>& rhs) {
     data_ = _s_add(data_, rhs.data_);
     return *this;
   }
 
-  MatrixBase<1, 1>& operator-=(const MatrixBase<1, 1>& rhs) {
+  Matrix<1, 1>& operator-=(const Matrix<1, 1>& rhs) {
     data_ = _s_sub(data_, rhs.data_);
     return *this;
   }
 
-  MatrixBase<1, 1>& operator*=(const MatrixBase<1, 1>& rhs) {
+  Matrix<1, 1>& operator*=(const Matrix<1, 1>& rhs) {
     data_ = _s_mul(data_, rhs.data_);
     return *this;
   }
 
   // Some useful operations
-  MatrixBase<1, 1> sqrt() const { return MatrixBase<1, 1>(_s_sqrt(data_)); }
+  Matrix<1, 1> sqrt() const { return Matrix<1, 1>(_s_sqrt(data_)); }
 
-  MatrixBase<1, 1> sign() const {
+  Matrix<1, 1> sign() const {
 #if CPU_ARCH_AMD64
     __m256 is_positive =
         _mm256_cmp_ps(data_, __zero, _CMP_GE_OS);  // data_ >= 0.0
@@ -268,10 +261,10 @@ class MatrixBase<1, 1> {
     uint32x4_t is_positive = vcgeq_f32(data_, __zero);  // data_ >= 0.0
     float32x4_t result = vbslq_f32(is_positive, __one, __minus_one);
 #endif
-    return MatrixBase<1, 1>(result);
+    return Matrix<1, 1>(result);
   }
 
-  MatrixBase<1, 1> abs() const {
+  Matrix<1, 1> abs() const {
     // Use bitwise AND to clear the sign bit
 #if CPU_ARCH_AMD64
     __m256 result = _mm256_andnot_ps(_s_set1(-0.0f), data_);
@@ -281,14 +274,14 @@ class MatrixBase<1, 1> {
     uint32x4_t abs_as_int = vandq_u32(data_as_int, sign_mask);
     float32x4_t result = vreinterpretq_f32_u32(abs_as_int);
 #endif
-    return MatrixBase<1, 1>(result);
+    return Matrix<1, 1>(result);
   }
 
   /// @brief Approximated MatrixBase<1, 1> exp. by using Taylor series expansion
   /// up to 8-th order.
   ///
   /// e^x = 1+x+x^2/2!+x^3/3!+x^4/4!+x^5/5!+x^6/6!+x^7/7!+x^8/8!
-  MatrixBase<1, 1> exp() const {
+  Matrix<1, 1> exp() const {
     const auto& x = data_;
     _s_data term = __one;
     _s_data res = term;
@@ -297,7 +290,7 @@ class MatrixBase<1, 1> {
       term = _s_div(term, _s_set1(static_cast<float>(i)));
       res = _s_add(res, term);
     }
-    return MatrixBase<1, 1>(res);
+    return Matrix<1, 1>(res);
   }
 
   // Store SIMD data to normal memory
@@ -305,7 +298,7 @@ class MatrixBase<1, 1> {
 
   // Debug functions
   friend std::ostream& operator<<(std::ostream& outputStream,
-                                  const MatrixBase<1, 1>& scalar) {
+                                  const Matrix<1, 1>& scalar) {
     float multi_scalars[__SIMD_DATA_STRIDE];
     scalar.StoreData(multi_scalars);
     std::cout << "[";
