@@ -18,12 +18,19 @@
 
 namespace simd {
 
+/// @brief Allocates aligned memory for a given number of data elements.
+/// @tparam DataType The type of data to allocate memory for.
+/// @param num_data The number of data elements to allocate memory for.
+/// @return Pointer to the allocated aligned memory.
 template <typename DataType>
 inline DataType* GetAlignedMemory(const size_t num_data) {
   return reinterpret_cast<DataType*>(
       std::aligned_alloc(ALIGN_BYTES, num_data * sizeof(DataType)));
 }
 
+/// @brief Frees aligned memory allocated with GetAlignedMemory.
+/// @tparam DataType  The type of data for which the memory was allocated.
+/// @param ptr Pointer to the aligned memory to be freed.
 template <typename DataType>
 inline void FreeAlignedMemory(DataType* ptr) {
   if (ptr != nullptr) std::free(reinterpret_cast<void*>(ptr));

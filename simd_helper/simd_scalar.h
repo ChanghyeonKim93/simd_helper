@@ -92,11 +92,15 @@ class Matrix<1, 1> {
   Matrix<1, 1>(const float input) { data_ = _s_set1(input); }
 
 #if defined(CPU_ARCH_AMD64)
+  /// @brief Constructor initializes the matrix with 8 float values.
+  /// @param n1_to_n8 The values to initialize the matrix.
   Matrix<1, 1>(const float n1, const float n2, const float n3, const float n4,
                const float n5, const float n6, const float n7, const float n8) {
     data_ = _s_set(n8, n7, n6, n5, n4, n3, n2, n1);
   }
 #elif defined(CPU_ARCH_ARM)
+  /// @brief Constructor initializes the matrix with 4 float values.
+  /// @param n1_to_n4 The values to initialize the matrix.
   MatrixBase<1, 1>(const float n1, const float n2, const float n3,
                    const float n4) {
     const float temp[] = {n1, n2, n3, n4};
@@ -104,12 +108,21 @@ class Matrix<1, 1> {
   }
 #endif
 
+  /// @brief Copy constructor initializes the matrix with another matrix.
+  /// @param rhs The matrix to copy from.
   Matrix<1, 1>(const Matrix<1, 1>& rhs) { data_ = rhs.data_; }
 
+  /// @brief Constructor initializes the matrix with a pointer to float data.
+  /// @param rhs Pointer to float data to initialize the matrix.
   Matrix<1, 1>(const float* rhs) { data_ = _s_load(rhs); }
 
+  /// @brief Constructor initializes the matrix with a SIMD data type.
+  /// @param rhs The SIMD data type to initialize the matrix.
   Matrix<1, 1>(const _s_data& rhs) { data_ = rhs; }
 
+  /// @brief Assignment operator to set the matrix to a scalar value.
+  /// @param rhs The scalar value to assign to the matrix.
+  /// @return Reference to the current matrix.
   Matrix<1, 1>& operator=(const float rhs) {
     data_ = _s_set1(rhs);
     return *this;
@@ -121,6 +134,7 @@ class Matrix<1, 1> {
   }
 
   // Comparison operations
+
   Matrix<1, 1> operator<(const float scalar) const {
 #if defined(CPU_ARCH_AMD64)
     return _mm256_and_ps(_mm256_cmp_ps(data_, _s_set1(scalar), _CMP_LT_OS),
@@ -258,9 +272,13 @@ class Matrix<1, 1> {
     return *this;
   }
 
-  // Some useful operations
+  /// @brief Returns the square root of the matrix elements.
+  /// @return Matrix<1, 1> with square root of the elements.
   Matrix<1, 1> sqrt() const { return Matrix<1, 1>(_s_sqrt(data_)); }
 
+  /// @brief Returns the sign of the matrix elements.
+  /// @return Matrix<1, 1> with elements set to 1.0f for positive elements and
+  /// -1.0f for negative elements.
   Matrix<1, 1> sign() const {
 #if defined(CPU_ARCH_AMD64)
     __m256 is_positive =
@@ -274,6 +292,8 @@ class Matrix<1, 1> {
     return Matrix<1, 1>(result);
   }
 
+  /// @brief Returns the absolute value of the matrix elements.
+  /// @return Matrix<1, 1> with absolute values of the elements.
   Matrix<1, 1> abs() const {
     // Use bitwise AND to clear the sign bit
 #if defined(CPU_ARCH_AMD64)
@@ -293,7 +313,6 @@ class Matrix<1, 1> {
   /// e^x = 1+x+x^2/2!+x^3/3!+x^4/4!+x^5/5!+x^6/6!+x^7/7!+x^8/8!
   Matrix<1, 1> exp() const {
     const auto& x = data_;
-    const _s_data x = data_;
     _s_data res = _s_set1(1.0f / 40320.0f);                 // 1/8!
     res = _s_add(_s_mul(res, x), _s_set1(1.0f / 5040.0f));  // + 1/7!
     res = _s_add(_s_mul(res, x), _s_set1(1.0f / 720.0f));   // + 1/6!
@@ -306,10 +325,11 @@ class Matrix<1, 1> {
     return Matrix<1, 1>(res);
   }
 
-  // Store SIMD data to normal memory
+  /// @brief Stores the SIMD data to normal memory.
+  /// @param normal_memory Pointer to the normal memory where the data will be
+  /// stored.
   void StoreData(float* normal_memory) const { _s_store(normal_memory, data_); }
 
-  // Debug functions
   friend std::ostream& operator<<(std::ostream& outputStream,
                                   const Matrix<1, 1>& scalar) {
     float multi_scalars[__SIMD_DATA_STRIDE];

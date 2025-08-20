@@ -87,7 +87,8 @@ class Matrix {
   using EigenMatrix = Eigen::Matrix<float, kRow, kCol>;
 
  public:
-  // static members
+  // Static members
+
   static const size_t data_stride{__SIMD_DATA_STRIDE};
 
   static inline Matrix Zeros() { return Matrix(0.0f); }
@@ -98,6 +99,7 @@ class Matrix {
 
  public:
   // Initialization & Assignment operations
+
   Matrix() {
     for (int r = 0; r < kRow; ++r)
       for (int c = 0; c < kCol; ++c) data_[r][c] = Scalar(0.0f);
@@ -139,6 +141,12 @@ class Matrix {
     }
   }
 
+  /// @brief Constructor initializes the matrix with multiple float pointers.
+  /// Each float pointer directs to a multiple elements of the specific position
+  /// of the matrix. For example, the first pointer points to multiple elements
+  /// from the (0,0) position of the multiple matrices.
+  /// @param multi_elements Vector of pointers to multiple float data to
+  /// initialize the matrix.
   Matrix(const std::vector<float*>& multi_elements) {
     if (multi_elements.size() != kRow * kCol)
       throw std::runtime_error("Wrong number of data");
@@ -167,18 +175,26 @@ class Matrix {
     return data_[r][c];
   }
 
+  /// @brief Returns a block of the matrix starting from the specified row and
+  /// column
+  /// @tparam kBlockRow The number of rows in the block.
+  /// @tparam kBlockCol The number of columns in the block.
+  /// @param start_row The starting row index of block on the original matrix
+  /// @param start_col The starting column index of block on the original matrix
+  /// @return BlockMatrix<kBlockRow, kBlockCol> representing the block of the
+  /// matrix
   template <int kBlockRow, int kBlockCol>
   inline BlockMatrix<kBlockRow, kBlockCol> block(const int start_row,
                                                  const int start_col) {
     return BlockMatrix<kBlockRow, kBlockCol>(this, start_row, start_col);
   }
 
-  template <int kRhsRow, int kRhsCol>
-  inline Matrix<kRhsRow, kRhsCol> block(const int start_row,
-                                        const int start_col) const {
-    Matrix<kRhsRow, kRhsCol> res;
-    for (int r = 0; r < kRhsRow; ++r)
-      for (int c = 0; c < kRhsCol; ++c)
+  template <int kBlockRow, int kBlockCol>
+  inline Matrix<kBlockRow, kBlockCol> block(const int start_row,
+                                            const int start_col) const {
+    Matrix<kBlockRow, kBlockCol> res;
+    for (int r = 0; r < kBlockRow; ++r)
+      for (int c = 0; c < kBlockCol; ++c)
         res(r, c) = data_[start_row + r][start_col + c];
     return res;
   }
@@ -246,6 +262,7 @@ class Matrix {
   }
 
   // Arithmetic operations: matrix-matrix operations
+
   Matrix operator+(const Matrix& rhs) const {
     Matrix res = *this;
     for (int r = 0; r < kRow; ++r)
@@ -292,6 +309,7 @@ class Matrix {
   }
 
   // Some matrix operations
+
   inline Matrix<kCol, kRow> transpose() const {
     Matrix<kCol, kRow> res;
     for (int r = 0; r < kRow; ++r)
@@ -332,9 +350,8 @@ class Matrix {
     return res;
   }
 
-  /*
-   Vector specialized operations
-  */
+  // Vector specialized operations
+
   template <int C = kCol>
   typename std::enable_if<C == 1, Scalar&>::type operator()(const int r) {
     return data_[r][0];
@@ -388,7 +405,9 @@ class Matrix {
     return result;
   }
 
-  // Store SIMD data to normal memory
+  /// @brief Stores the SIMD data to normal memory.
+  /// @param multi_matrices  Vector of Eigen matrices where the data will be
+  /// stored.
   void StoreData(std::vector<EigenMatrix>* multi_matrices) const {
     if (multi_matrices->size() != data_stride)
       multi_matrices->resize(data_stride);
@@ -402,7 +421,6 @@ class Matrix {
     }
   }
 
-  // Debug functions
   friend std::ostream& operator<<(std::ostream& outputStream,
                                   const Matrix& simd_mat) {
     static std::stringstream ss;
