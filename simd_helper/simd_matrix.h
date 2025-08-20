@@ -187,7 +187,12 @@ class Matrix {
 
   Matrix operator+() const { return *this; }
 
-  Matrix operator-() const { return Matrix(_s_sub(__zero, data_)); }
+  Matrix operator-() const {
+    Matrix res = *this;
+    for (int r = 0; r < kRow; ++r)
+      for (int c = 0; c < kCol; ++c) res.data_[r][c] = -res.data_[r][c];
+    return res;
+  }
 
   // Arithmetic operations: element-wise operations
 
