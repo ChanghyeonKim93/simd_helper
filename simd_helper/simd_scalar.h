@@ -3,17 +3,21 @@
 
 #include <iostream>
 
-#define CPU_ARCH_AMD64 defined(__amd64__) || defined(__x86_64__)
-#define CPU_ARCH_ARM defined(__arm64__) || defined(__aarch64__)
+#if defined(__amd64__) || defined(__x86_64__)
+#define CPU_ARCH_AMD64 1
+#elif defined(__arm64__) || defined(__aarch64__)
+#define CPU_ARCH_ARM 1
+#endif
 
 namespace {
 
-#if CPU_ARCH_AMD64
+#if defined(CPU_ARCH_AMD64)
 #include "immintrin.h"
 
 #define __SIMD_DATA_STRIDE 8
 
 using _s_data = __m256;
+
 #define _s_set _mm256_set_ps
 #define _s_set1 _mm256_set1_ps
 #define _s_load _mm256_load_ps
@@ -24,16 +28,17 @@ using _s_data = __m256;
 #define _s_rcp _mm256_rcp_ps
 #define _s_store _mm256_store_ps
 #define _s_round(input) _mm256_round_ps((input), _MM_FROUND_NINT)
-#define _s_ceil = _mm256_ceil_ps
-#define _s_floor = _mm256_floor_ps
+#define _s_ceil _mm256_ceil_ps
+#define _s_floor _mm256_floor_ps
 #define _s_sqrt _mm256_sqrt_ps
 
-#elif CPU_ARCH_ARM
+#elif defined(CPU_ARCH_ARM)
 #include "arm_neon.h"
 
 #define __SIMD_DATA_STRIDE 4
 
 using _s_data = float32x4_t;
+
 #define _s_set vsetq_f32
 #define _s_set1 vdupq_n_f32
 #define _s_load vld1q_f32
@@ -78,19 +83,24 @@ class Matrix<1, 1> {
 
  public:
   // Initialization & Assignment operations
+
+  /// @brief Default constructor initializes all elements to zero.
   Matrix<1, 1>() { data_ = __zero; }
 
+  /// @brief Constructor initializes all elements to the given input value.
+  /// @param input The value to initialize all elements of the matrix.
   Matrix<1, 1>(const float input) { data_ = _s_set1(input); }
 
-#if CPU_ARCH_AMD64
+#if defined(CPU_ARCH_AMD64)
   Matrix<1, 1>(const float n1, const float n2, const float n3, const float n4,
                const float n5, const float n6, const float n7, const float n8) {
     data_ = _s_set(n8, n7, n6, n5, n4, n3, n2, n1);
   }
-#elif CPU_ARCH_ARM
+#elif defined(CPU_ARCH_ARM)
   MatrixBase<1, 1>(const float n1, const float n2, const float n3,
                    const float n4) {
-    data_ = (float32x4_t){n1, n2, n3, n4};
+    const float temp[] = {n1, n2, n3, n4};
+    data_ = vld1q_f32(temp);
   }
 #endif
 
@@ -112,69 +122,69 @@ class Matrix<1, 1> {
 
   // Comparison operations
   Matrix<1, 1> operator<(const float scalar) const {
-#if CPU_ARCH_AMD64
+#if defined(CPU_ARCH_AMD64)
     return _mm256_and_ps(_mm256_cmp_ps(data_, _s_set1(scalar), _CMP_LT_OS),
                          __one);
-#elif CPU_ARCH_ARM
+#elif defined(CPU_ARCH_ARM)
     return vbslq_f32(vcltq_f32(data_, vdupq_n_f32(scalar)), __one, __zero);
 #endif
   }
 
   Matrix<1, 1> operator<=(const float scalar) const {
-#if CPU_ARCH_AMD64
+#if defined(CPU_ARCH_AMD64)
     return _mm256_and_ps(_mm256_cmp_ps(data_, _s_set1(scalar), _CMP_LE_OS),
                          __one);
-#elif CPU_ARCH_ARM
+#elif defined(CPU_ARCH_ARM)
     return vbslq_f32(vcleq_f32(data_, vdupq_n_f32(scalar)), __one, __zero);
 #endif
   }
 
   Matrix<1, 1> operator>(const float scalar) const {
-#if CPU_ARCH_AMD64
+#if defined(CPU_ARCH_AMD64)
     return _mm256_and_ps(_mm256_cmp_ps(data_, _s_set1(scalar), _CMP_GT_OS),
                          __one);
-#elif CPU_ARCH_ARM
+#elif defined(CPU_ARCH_ARM)
     return vbslq_f32(vcgtq_f32(data_, vdupq_n_f32(scalar)), __one, __zero);
 #endif
   }
 
   Matrix<1, 1> operator>=(const float scalar) const {
-#if CPU_ARCH_AMD64
+#if defined(CPU_ARCH_AMD64)
     return _mm256_and_ps(_mm256_cmp_ps(data_, _s_set1(scalar), _CMP_GE_OS),
                          __one);
-#elif CPU_ARCH_ARM
+#elif defined(CPU_ARCH_ARM)
     return vbslq_f32(vcgeq_f32(data_, vdupq_n_f32(scalar)), __one, __zero);
 #endif
   }
 
   Matrix<1, 1> operator<(const Matrix<1, 1>& rhs) const {
-#if CPU_ARCH_AMD64
+#if defined(CPU_ARCH_AMD64)
     return _mm256_and_ps(_mm256_cmp_ps(data_, rhs.data_, _CMP_LT_OS), __one);
-#elif CPU_ARCH_ARM
+#elif defined(CPU_ARCH_ARM)
     return vbslq_f32(vcltq_f32(data_, rhs.data_), __one, __zero);
 #endif
   }
 
   Matrix<1, 1> operator<=(const Matrix<1, 1>& rhs) const {
-#if CPU_ARCH_AMD64
+#if defined(CPU_ARCH_AMD64)
     return _mm256_and_ps(_mm256_cmp_ps(data_, rhs.data_, _CMP_LE_OS), __one);
-#elif CPU_ARCH_ARM
+#elif defined(CPU_ARCH_ARM)
     return vbslq_f32(vcleq_f32(data_, rhs.data_), __one, __zero);
 #endif
   }
 
   Matrix<1, 1> operator>(const Matrix<1, 1>& rhs) const {
-#if CPU_ARCH_AMD64
+#if defined(CPU_ARCH_AMD64)
     return _mm256_and_ps(_mm256_cmp_ps(data_, rhs.data_, _CMP_GT_OS), __one);
-#elif CPU_ARCH_ARM
+#elif defined(CPU_ARCH_ARM)
     return vbslq_f32(vcgtq_f32(data_, rhs.data_), __one, __zero);
 #endif
   }
 
   Matrix<1, 1> operator>=(const Matrix<1, 1>& rhs) const {
-#if CPU_ARCH_AMD64
+#if defined(CPU_ARCH_AMD64)
     return _mm256_and_ps(_mm256_cmp_ps(data_, rhs.data_, _CMP_GE_OS), __one);
-#elif CPU_ARCH_ARM
+#elif defined(CPU_ARCH_ARM)
     return vbslq_f32(vcgeq_f32(data_, rhs.data_), __one, __zero);
 #endif
   }
@@ -252,11 +262,11 @@ class Matrix<1, 1> {
   Matrix<1, 1> sqrt() const { return Matrix<1, 1>(_s_sqrt(data_)); }
 
   Matrix<1, 1> sign() const {
-#if CPU_ARCH_AMD64
+#if defined(CPU_ARCH_AMD64)
     __m256 is_positive =
         _mm256_cmp_ps(data_, __zero, _CMP_GE_OS);  // data_ >= 0.0
     __m256 result = _mm256_blendv_ps(__minus_one, __one, is_positive);
-#elif CPU_ARCH_ARM
+#elif defined(CPU_ARCH_ARM)
     // Compare data_ >= 0.0
     uint32x4_t is_positive = vcgeq_f32(data_, __zero);  // data_ >= 0.0
     float32x4_t result = vbslq_f32(is_positive, __one, __minus_one);
@@ -266,9 +276,9 @@ class Matrix<1, 1> {
 
   Matrix<1, 1> abs() const {
     // Use bitwise AND to clear the sign bit
-#if CPU_ARCH_AMD64
+#if defined(CPU_ARCH_AMD64)
     __m256 result = _mm256_andnot_ps(_s_set1(-0.0f), data_);
-#elif CPU_ARCH_ARM
+#elif defined(CPU_ARCH_ARM)
     uint32x4_t sign_mask = vdupq_n_u32(0x7FFFFFFF);
     uint32x4_t data_as_int = vreinterpretq_u32_f32(data_);
     uint32x4_t abs_as_int = vandq_u32(data_as_int, sign_mask);
@@ -283,13 +293,16 @@ class Matrix<1, 1> {
   /// e^x = 1+x+x^2/2!+x^3/3!+x^4/4!+x^5/5!+x^6/6!+x^7/7!+x^8/8!
   Matrix<1, 1> exp() const {
     const auto& x = data_;
-    _s_data term = __one;
-    _s_data res = term;
-    for (int i = 1; i < 9; ++i) {
-      term = _s_mul(term, x);
-      term = _s_div(term, _s_set1(static_cast<float>(i)));
-      res = _s_add(res, term);
-    }
+    const _s_data x = data_;
+    _s_data res = _s_set1(1.0f / 40320.0f);                 // 1/8!
+    res = _s_add(_s_mul(res, x), _s_set1(1.0f / 5040.0f));  // + 1/7!
+    res = _s_add(_s_mul(res, x), _s_set1(1.0f / 720.0f));   // + 1/6!
+    res = _s_add(_s_mul(res, x), _s_set1(1.0f / 120.0f));   // + 1/5!
+    res = _s_add(_s_mul(res, x), _s_set1(1.0f / 24.0f));    // + 1/4!
+    res = _s_add(_s_mul(res, x), _s_set1(1.0f / 6.0f));     // + 1/3!
+    res = _s_add(_s_mul(res, x), _s_set1(1.0f / 2.0f));     // + 1/2!
+    res = _s_add(_s_mul(res, x), _s_set1(1.0f));            // + 1/1!
+    res = _s_add(_s_mul(res, x), _s_set1(1.0f));            // + 1
     return Matrix<1, 1>(res);
   }
 
