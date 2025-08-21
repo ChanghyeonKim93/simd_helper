@@ -101,8 +101,7 @@ class Matrix<1, 1> {
 #elif defined(CPU_ARCH_ARM)
   /// @brief Constructor initializes the matrix with 4 float values.
   /// @param n1_to_n4 The values to initialize the matrix.
-  MatrixBase<1, 1>(const float n1, const float n2, const float n3,
-                   const float n4) {
+  Matrix<1, 1>(const float n1, const float n2, const float n3, const float n4) {
     const float temp[] = {n1, n2, n3, n4};
     data_ = vld1q_f32(temp);
   }
@@ -307,7 +306,7 @@ class Matrix<1, 1> {
     return Matrix<1, 1>(result);
   }
 
-  /// @brief Approximated MatrixBase<1, 1> exp. by using Taylor series expansion
+  /// @brief Approximated Matrix<1, 1> exp. by using Taylor series expansion
   /// up to 8-th order.
   ///
   /// e^x = 1+x+x^2/2!+x^3/3!+x^4/4!+x^5/5!+x^6/6!+x^7/7!+x^8/8!
