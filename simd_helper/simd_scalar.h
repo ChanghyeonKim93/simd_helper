@@ -296,32 +296,65 @@ class Matrix<1, 1> {
   Matrix<1, 1> abs() const {
     // Use bitwise AND to clear the sign bit
 #if defined(CPU_ARCH_AMD64)
-    __m256 result = _mm256_andnot_ps(_s_set1(-0.0f), data_);
+    const _s_data minus_zero__ = _s_set1(-0.0f);
+    const _s_data result = _mm256_andnot_ps(minus_zero__, data_);
 #elif defined(CPU_ARCH_ARM)
     uint32x4_t sign_mask = vdupq_n_u32(0x7FFFFFFF);
     uint32x4_t data_as_int = vreinterpretq_u32_f32(data_);
     uint32x4_t abs_as_int = vandq_u32(data_as_int, sign_mask);
-    float32x4_t result = vreinterpretq_f32_u32(abs_as_int);
+    _s_data result = vreinterpretq_f32_u32(abs_as_int);
 #endif
     return Matrix<1, 1>(result);
   }
 
-  /// @brief Approximated Matrix<1, 1> exp. by using Taylor series expansion
-  /// up to 8-th order.
-  ///
-  /// e^x = 1+x+x^2/2!+x^3/3!+x^4/4!+x^5/5!+x^6/6!+x^7/7!+x^8/8!
+  /// @brief Compute exponential of each element. In this implementation, we use
+  /// range reduction method.  e^x = 2^n * e^r where n = floor(x / ln(2)),
+  /// r = x - n * ln(2)
   Matrix<1, 1> exp() const {
+    // Precalculate constants
+    const _s_data ln2 = _s_set1(0.693147180559945f);     // ln(2)
+    const _s_data inv_ln2 = _s_set1(1.44269504088896f);  // 1/ln(2)
+
     const auto& x = data_;
-    _s_data res = _s_set1(1.0f / 40320.0f);                 // 1/8!
-    res = _s_add(_s_mul(res, x), _s_set1(1.0f / 5040.0f));  // + 1/7!
-    res = _s_add(_s_mul(res, x), _s_set1(1.0f / 720.0f));   // + 1/6!
-    res = _s_add(_s_mul(res, x), _s_set1(1.0f / 120.0f));   // + 1/5!
-    res = _s_add(_s_mul(res, x), _s_set1(1.0f / 24.0f));    // + 1/4!
-    res = _s_add(_s_mul(res, x), _s_set1(1.0f / 6.0f));     // + 1/3!
-    res = _s_add(_s_mul(res, x), _s_set1(1.0f / 2.0f));     // + 1/2!
-    res = _s_add(_s_mul(res, x), _s_set1(1.0f));            // + 1/1!
-    res = _s_add(_s_mul(res, x), _s_set1(1.0f));            // + 1
-    return Matrix<1, 1>(res);
+
+    // Calculate n = floor(x/ln(2))
+    _s_data n_float = _s_floor(_s_mul(x, inv_ln2));  // n = floor(x/ln(2))
+
+    // Calculate r = x - n*ln(2)
+    _s_data r = _s_sub(x, _s_mul(n_float, ln2));
+
+    // e^r ≈ 1 + r + r^2/2! + r^3/3! + r^4/4! + r^5/5! + r^6/6! + r^7/7!
+    _s_data exp_r__ = _s_set1(1.0f / 5040.0f);
+    exp_r__ = _s_add(_s_mul(exp_r__, r), _s_set1(1.0f / 720.0f));
+    exp_r__ = _s_add(_s_mul(exp_r__, r), _s_set1(1.0f / 120.0f));
+    exp_r__ = _s_add(_s_mul(exp_r__, r), _s_set1(1.0f / 24.0f));
+    exp_r__ = _s_add(_s_mul(exp_r__, r), _s_set1(1.0f / 6.0f));
+    exp_r__ = _s_add(_s_mul(exp_r__, r), _s_set1(1.0f / 2.0f));
+    exp_r__ = _s_add(_s_mul(exp_r__, r), _s_set1(1.0f / 1.0f));
+    exp_r__ = _s_add(_s_mul(exp_r__, r), _s_set1(1.0f));
+
+    // Calculate 2^n using bit manipulation. Convert n to integer type for bit
+    // shifting
+#if defined(CPU_ARCH_AMD64)
+    __m256i n_int = _mm256_cvtps_epi32(n_float);
+    // 2^n is computed by adding n to the exponent field of 1.0
+    // Shift n left by 23 bits (exponent position in IEEE-754)
+    __m256i exponent_bits = _mm256_slli_epi32(n_int, 23);
+
+    // For positive n, 2^n = (1.0 * 2^n)
+    // For negative n, 2^n = (1.0 * 2^n) = 1.0 / 2^(-n)
+    _s_data pow2n = _mm256_castsi256_ps(
+        _mm256_add_epi32(exponent_bits, _mm256_castps_si256(_s_set1(1.0f))));
+#elif defined(CPU_ARCH_ARM)
+    int32x4_t n_int = vcvtq_s32_f32(n_float);
+
+    // 2^n calculation
+    int32x4_t exponent_bits = vshlq_n_s32(n_int, 23);
+    float32x4_t pow2n = vreinterpretq_f32_s32(
+        vaddq_s32(exponent_bits, vreinterpretq_s32_f32(vdupq_n_f32(1.0f))));
+#endif
+    // e^x = 2^n * e^r
+    return Matrix<1, 1>(_s_mul(pow2n, exp_r__));
   }
 
   /// @brief Stores the SIMD data to normal memory.
