@@ -351,4 +351,116 @@ TEST_F(CalculationTest, MemoryAlignmentTest) {
   EXPECT_TRUE(is_aligned);
 }
 
+TEST_F(CalculationTest, ExponentialTest) {
+  float v1 = 0.25f;
+  float v2 = 0.5f;
+  float v3 = 1.0f;
+  float v4 = 4.0f;
+
+  float data[8] = {v1, v2, v3, v4, -v1, -v2, -v3, -v4};
+
+  std::vector<float> exp_true;
+  exp_true.push_back(std::exp(data[0]));
+  exp_true.push_back(std::exp(data[1]));
+  exp_true.push_back(std::exp(data[2]));
+  exp_true.push_back(std::exp(data[3]));
+  exp_true.push_back(std::exp(data[4]));
+  exp_true.push_back(std::exp(data[5]));
+  exp_true.push_back(std::exp(data[6]));
+  exp_true.push_back(std::exp(data[7]));
+
+  simd::Scalar va__(data);
+
+  float res[8];
+  const auto exp__ = va__.exp();
+  exp__.StoreData(res);
+
+  for (size_t k = 0; k < simd::Scalar::data_stride; ++k)
+    EXPECT_FLOAT_EQ(exp_true[k], res[k]);
+}
+
+TEST_F(CalculationTest, SqrtTest) {
+  float v1 = 0.25f;
+  float v2 = 0.5f;
+  float v3 = 1.0f;
+  float v4 = 4.0f;
+
+  float data[8] = {v1, v2, v3, v4, 2.0f * v1, 2.0f * v2, 2.0f * v3, 2.0f * v4};
+
+  std::vector<float> exp_true;
+  exp_true.push_back(std::sqrt(data[0]));
+  exp_true.push_back(std::sqrt(data[1]));
+  exp_true.push_back(std::sqrt(data[2]));
+  exp_true.push_back(std::sqrt(data[3]));
+  exp_true.push_back(std::sqrt(data[4]));
+  exp_true.push_back(std::sqrt(data[5]));
+  exp_true.push_back(std::sqrt(data[6]));
+  exp_true.push_back(std::sqrt(data[7]));
+
+  simd::Scalar va__(data);
+
+  float res[8];
+  const auto exp__ = va__.sqrt();
+  exp__.StoreData(res);
+
+  for (size_t k = 0; k < simd::Scalar::data_stride; ++k)
+    EXPECT_FLOAT_EQ(exp_true[k], res[k]);
+}
+
+TEST_F(CalculationTest, SignTest) {
+  float v1 = -0.25f;
+  float v2 = 0.5f;
+  float v3 = -1.0f;
+  float v4 = 4.0f;
+
+  float data[8] = {v1, v2, v3, v4, -v1, -v2, -v3, -v4};
+
+  std::vector<float> sign_true;
+  sign_true.push_back(data[0] > 0 ? 1.0f : -1.0f);
+  sign_true.push_back(data[1] > 0 ? 1.0f : -1.0f);
+  sign_true.push_back(data[2] > 0 ? 1.0f : -1.0f);
+  sign_true.push_back(data[3] > 0 ? 1.0f : -1.0f);
+  sign_true.push_back(data[4] > 0 ? 1.0f : -1.0f);
+  sign_true.push_back(data[5] > 0 ? 1.0f : -1.0f);
+  sign_true.push_back(data[6] > 0 ? 1.0f : -1.0f);
+  sign_true.push_back(data[7] > 0 ? 1.0f : -1.0f);
+
+  simd::Scalar va__(data);
+
+  float res[8];
+  const auto sign__ = va__.sign();
+  sign__.StoreData(res);
+
+  for (size_t k = 0; k < simd::Scalar::data_stride; ++k)
+    EXPECT_FLOAT_EQ(sign_true[k], res[k]);
+}
+
+TEST_F(CalculationTest, AbsTest) {
+  float v1 = -0.25f;
+  float v2 = 0.5f;
+  float v3 = -1.0f;
+  float v4 = 4.0f;
+
+  float data[8] = {v1, v2, v3, v4, -v1, -v2, -v3, -v4};
+
+  std::vector<float> abs_true;
+  abs_true.push_back(std::abs(data[0]));
+  abs_true.push_back(std::abs(data[1]));
+  abs_true.push_back(std::abs(data[2]));
+  abs_true.push_back(std::abs(data[3]));
+  abs_true.push_back(std::abs(data[4]));
+  abs_true.push_back(std::abs(data[5]));
+  abs_true.push_back(std::abs(data[6]));
+  abs_true.push_back(std::abs(data[7]));
+
+  simd::Scalar va__(data);
+
+  float res[8];
+  const auto abs__ = va__.abs();
+  abs__.StoreData(res);
+
+  for (size_t k = 0; k < simd::Scalar::data_stride; ++k)
+    EXPECT_FLOAT_EQ(abs_true[k], res[k]);
+}
+
 }  // namespace simd_helper
