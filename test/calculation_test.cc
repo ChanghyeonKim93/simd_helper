@@ -463,4 +463,75 @@ TEST_F(CalculationTest, AbsTest) {
     EXPECT_FLOAT_EQ(abs_true[k], res[k]);
 }
 
+TEST_F(CalculationTest, LossTest) {
+  constexpr float c1 = 1.0f;
+  constexpr float c2 = 1.0f;
+
+  float v1 = 0.25f;
+  float v2 = 0.5f;
+  float v3 = 1.0f;
+  float v4 = 400.0f;
+  float data[8] = {v1, v2, v3, v4, -v1, -v2, -v3, -v4};
+
+  std::vector<float> exp_true;
+  exp_true.push_back(std::exp(-c2 * data[0]));
+  exp_true.push_back(std::exp(-c2 * data[1]));
+  exp_true.push_back(std::exp(-c2 * data[2]));
+  exp_true.push_back(std::exp(-c2 * data[3]));
+  exp_true.push_back(std::exp(-c2 * data[4]));
+  exp_true.push_back(std::exp(-c2 * data[5]));
+  exp_true.push_back(std::exp(-c2 * data[6]));
+  exp_true.push_back(std::exp(-c2 * data[7]));
+
+  std::vector<float> loss_true;
+  loss_true.push_back(c1 - c1 * exp_true[0]);
+  loss_true.push_back(c1 - c1 * exp_true[1]);
+  loss_true.push_back(c1 - c1 * exp_true[2]);
+  loss_true.push_back(c1 - c1 * exp_true[3]);
+  loss_true.push_back(c1 - c1 * exp_true[4]);
+  loss_true.push_back(c1 - c1 * exp_true[5]);
+  loss_true.push_back(c1 - c1 * exp_true[6]);
+  loss_true.push_back(c1 - c1 * exp_true[7]);
+
+  std::vector<float> dloss_true;
+  dloss_true.push_back(2.0 * c1 * c2 * exp_true[0]);
+  dloss_true.push_back(2.0 * c1 * c2 * exp_true[1]);
+  dloss_true.push_back(2.0 * c1 * c2 * exp_true[2]);
+  dloss_true.push_back(2.0 * c1 * c2 * exp_true[3]);
+  dloss_true.push_back(2.0 * c1 * c2 * exp_true[4]);
+  dloss_true.push_back(2.0 * c1 * c2 * exp_true[5]);
+  dloss_true.push_back(2.0 * c1 * c2 * exp_true[6]);
+  dloss_true.push_back(2.0 * c1 * c2 * exp_true[7]);
+
+  std::vector<float> d2loss_true;
+  d2loss_true.push_back(-2.0 * c2 * dloss_true[0]);
+  d2loss_true.push_back(-2.0 * c2 * dloss_true[1]);
+  d2loss_true.push_back(-2.0 * c2 * dloss_true[2]);
+  d2loss_true.push_back(-2.0 * c2 * dloss_true[3]);
+  d2loss_true.push_back(-2.0 * c2 * dloss_true[4]);
+  d2loss_true.push_back(-2.0 * c2 * dloss_true[5]);
+  d2loss_true.push_back(-2.0 * c2 * dloss_true[6]);
+  d2loss_true.push_back(-2.0 * c2 * dloss_true[7]);
+
+  simd::Scalar sq_res__(data);
+  const simd::Scalar exp_term__ = simd::exp((-c2) * sq_res__);
+  auto loss__ = c1 - c1 * exp_term__;
+  auto dloss__ = 2.0 * c1 * c2 * exp_term__;
+  auto d2loss__ = (-2.0 * c2) * dloss__;
+
+  float simd_result[8];
+  exp_term__.StoreData(simd_result);
+  for (size_t k = 0; k < simd::Scalar::data_stride; ++k)
+    EXPECT_FLOAT_EQ(exp_true[k], simd_result[k]);
+  loss__.StoreData(simd_result);
+  for (size_t k = 0; k < simd::Scalar::data_stride; ++k)
+    EXPECT_FLOAT_EQ(loss_true[k], simd_result[k]);
+  dloss__.StoreData(simd_result);
+  for (size_t k = 0; k < simd::Scalar::data_stride; ++k)
+    EXPECT_FLOAT_EQ(dloss_true[k], simd_result[k]);
+  d2loss__.StoreData(simd_result);
+  for (size_t k = 0; k < simd::Scalar::data_stride; ++k)
+    EXPECT_FLOAT_EQ(d2loss_true[k], simd_result[k]);
+}
+
 }  // namespace simd_helper

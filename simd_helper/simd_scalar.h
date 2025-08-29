@@ -2,6 +2,7 @@
 #define SIMD_HELPER_SIMD_SCALAR_H_
 
 #include <iostream>
+#include <limits>
 
 #if defined(__amd64__) || defined(__x86_64__)
 #define CPU_ARCH_AMD64 1
@@ -31,6 +32,8 @@ using _s_data = __m256;
 #define _s_ceil _mm256_ceil_ps
 #define _s_floor _mm256_floor_ps
 #define _s_sqrt _mm256_sqrt_ps
+#define _s_min _mm256_min_ps
+#define _s_max _mm256_max_ps
 
 #elif defined(CPU_ARCH_ARM)
 #include "arm_neon.h"
@@ -52,6 +55,8 @@ using _s_data = float32x4_t;
 #define _s_ceil vrndpq_f32
 #define _s_floor vrndmq_f32
 #define _s_sqrt vsqrtq_f32
+#define _s_min vminq_f32
+#define _s_max vmaxq_f32
 
 #else
 #error \
@@ -311,27 +316,34 @@ class Matrix<1, 1> {
   /// range reduction method.  e^x = 2^n * e^r where n = floor(x / ln(2)),
   /// r = x - n * ln(2)
   Matrix<1, 1> exp() const {
+    const float min_input = -87.0f;
+    const float max_input = 88.0f;
+
+    _s_data min_val = _s_set1(min_input);
+    _s_data max_val = _s_set1(max_input);
+    _s_data clamped_x = _s_min(_s_max(data_, min_val), max_val);
+
     // Precalculate constants
     const _s_data ln2 = _s_set1(0.693147180559945f);     // ln(2)
     const _s_data inv_ln2 = _s_set1(1.44269504088896f);  // 1/ln(2)
 
-    const auto& x = data_;
+    const auto& x = clamped_x;
 
     // Calculate n = floor(x/ln(2))
     _s_data n_float = _s_floor(_s_mul(x, inv_ln2));  // n = floor(x/ln(2))
 
     // Calculate r = x - n*ln(2)
-    _s_data r = _s_sub(x, _s_mul(n_float, ln2));
+    _s_data r__ = _s_sub(x, _s_mul(n_float, ln2));
 
     // e^r ≈ 1 + r + r^2/2! + r^3/3! + r^4/4! + r^5/5! + r^6/6! + r^7/7!
     _s_data exp_r__ = _s_set1(1.0f / 5040.0f);
-    exp_r__ = _s_add(_s_mul(exp_r__, r), _s_set1(1.0f / 720.0f));
-    exp_r__ = _s_add(_s_mul(exp_r__, r), _s_set1(1.0f / 120.0f));
-    exp_r__ = _s_add(_s_mul(exp_r__, r), _s_set1(1.0f / 24.0f));
-    exp_r__ = _s_add(_s_mul(exp_r__, r), _s_set1(1.0f / 6.0f));
-    exp_r__ = _s_add(_s_mul(exp_r__, r), _s_set1(1.0f / 2.0f));
-    exp_r__ = _s_add(_s_mul(exp_r__, r), _s_set1(1.0f / 1.0f));
-    exp_r__ = _s_add(_s_mul(exp_r__, r), _s_set1(1.0f));
+    exp_r__ = _s_add(_s_mul(exp_r__, r__), _s_set1(1.0f / 720.0f));
+    exp_r__ = _s_add(_s_mul(exp_r__, r__), _s_set1(1.0f / 120.0f));
+    exp_r__ = _s_add(_s_mul(exp_r__, r__), _s_set1(1.0f / 24.0f));
+    exp_r__ = _s_add(_s_mul(exp_r__, r__), _s_set1(1.0f / 6.0f));
+    exp_r__ = _s_add(_s_mul(exp_r__, r__), _s_set1(1.0f / 2.0f));
+    exp_r__ = _s_add(_s_mul(exp_r__, r__), _s_set1(1.0f / 1.0f));
+    exp_r__ = _s_add(_s_mul(exp_r__, r__), _s_set1(1.0f));
 
     // Calculate 2^n using bit manipulation. Convert n to integer type for bit
     // shifting
@@ -353,8 +365,25 @@ class Matrix<1, 1> {
     float32x4_t pow2n = vreinterpretq_f32_s32(
         vaddq_s32(exponent_bits, vreinterpretq_s32_f32(vdupq_n_f32(1.0f))));
 #endif
+    _s_data result = _s_mul(pow2n, exp_r__);
+
+    // Handle overflow and underflow
+#if defined(CPU_ARCH_AMD64)
+    _s_data is_too_small = _mm256_cmp_ps(data_, min_val, _CMP_LT_OS);
+    result = _mm256_andnot_ps(is_too_small, result);
+    _s_data is_too_large = _mm256_cmp_ps(data_, max_val, _CMP_GT_OS);
+    _s_data inf_val = _mm256_set1_ps(std::numeric_limits<float>::infinity());
+    result = _mm256_blendv_ps(result, inf_val, is_too_large);
+#elif defined(CPU_ARCH_ARM)
+    uint32x4_t is_too_small = vcltq_f32(data_, min_val);
+    result = vbicq_f32(result, vreinterpretq_f32_u32(is_too_small));
+    uint32x4_t is_too_large = vcgtq_f32(data_, max_val);
+    float32x4_t inf_val = vdupq_n_f32(std::numeric_limits<float>::infinity());
+    result = vbslq_f32(is_too_large, inf_val, result);
+#endif
+
     // e^x = 2^n * e^r
-    return Matrix<1, 1>(_s_mul(pow2n, exp_r__));
+    return Matrix<1, 1>(result);
   }
 
   /// @brief Stores the SIMD data to normal memory.
