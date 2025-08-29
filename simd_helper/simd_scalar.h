@@ -376,7 +376,8 @@ class Matrix<1, 1> {
     result = _mm256_blendv_ps(result, inf_val, is_too_large);
 #elif defined(CPU_ARCH_ARM)
     uint32x4_t is_too_small = vcltq_f32(data_, min_val);
-    result = vbicq_f32(result, vreinterpretq_f32_u32(is_too_small));
+    result = vreinterpretq_f32_u32(
+        vbicq_u32(vreinterpretq_u32_f32(result), is_too_small));
     uint32x4_t is_too_large = vcgtq_f32(data_, max_val);
     float32x4_t inf_val = vdupq_n_f32(std::numeric_limits<float>::infinity());
     result = vbslq_f32(is_too_large, inf_val, result);
