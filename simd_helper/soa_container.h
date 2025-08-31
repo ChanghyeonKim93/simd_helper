@@ -1,9 +1,9 @@
 #ifndef SIMD_HELPER_SOA_CONTAINER_H_
 #define SIMD_HELPER_SOA_CONTAINER_H_
 
-#include <Eigen/Dense>
+#include "Eigen/Dense"
 
-#define ALIGN_BYTES 64
+#define ALIGN_BYTES 32
 // AVX2 (512 bits = 64 Bytes), AVX (256 bits ), SSE4.2 (128 bits )
 /** \internal Like malloc, but the returned pointer is guaranteed to be 32-byte
  * aligned. Fast, but wastes 32 additional bytes of memory. Does not throw any
@@ -42,7 +42,9 @@ inline void FreeAlignedMemory(DataType* ptr) {
 template <int kRow, int kCol>
 class SOAContainer {
  public:
-  SOAContainer(const int num_data) : num_data_(num_data) {
+  SOAContainer() {}
+
+  SOAContainer(const int num_data) : capacity_(num_data) {
     for (int row = 0; row < kRow; ++row)
       for (int col = 0; col < kCol; ++col)
         data_[row][col] = simd::GetAlignedMemory<float>(num_data);
@@ -55,19 +57,19 @@ class SOAContainer {
   }
 
   void Append(const Eigen::Matrix<float, kRow, kCol>& value) {
-    if (index_ >= num_data_ - 1) return;
+    if (index_ >= capacity_ - 1) return;
     for (int row = 0; row < kRow; ++row)
       for (int col = 0; col < kCol; ++col)
         data_[row][col][index_] = value(row, col);
     ++index_;
   }
 
-  void Resize(const int new_size) {
-    if (new_size <= num_data_) {
-      num_data_ = new_size;
+  void Reserve(const int new_size) {
+    if (new_size <= capacity_) {
+      capacity_ = new_size;
       index_ = 0;
     } else {
-      num_data_ = new_size;
+      capacity_ = new_size;
       index_ = 0;
       for (int row = 0; row < kRow; ++row) {
         for (int col = 0; col < kCol; ++col) {
@@ -80,19 +82,19 @@ class SOAContainer {
 
   void Clear() { index_ = 0; }
 
-  int GetSize() const { return index_; }
+  int GetSize() const { return index_ + 1; }
 
-  int GetCapacity() const { return num_data_; }
+  int GetCapacity() const { return capacity_; }
 
-  const float* GetElementPtr(const int row, const int col) const {
+  float* GetElementPtr(const int row, const int col) const {
     if (row < 0 || row >= kRow || col < 0 || col >= kCol) return nullptr;
-    return data_[row][col] + index;
+    return data_[row][col];
   }
 
  private:
   float* data_[kRow][kCol] = {nullptr};
   int index_{0};
-  int num_data_{-1};
+  int capacity_{-1};
 };
 
 }  // namespace simd

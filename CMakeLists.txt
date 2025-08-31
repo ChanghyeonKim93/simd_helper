@@ -34,7 +34,7 @@ include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
 install(FILES simd_helper/simd_helper.h simd_helper/simd_matrix.h
-              simd_helper/simd_scalar.h
+              simd_helper/simd_scalar.h simd_helper/soa_container.h
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/simd_helper)
 
 install(TARGETS simd_helper EXPORT simd_helper-targets)
