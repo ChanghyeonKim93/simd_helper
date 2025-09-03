@@ -4,6 +4,8 @@
 #include <iostream>
 #include <limits>
 
+#include "soa_container.h"
+
 #if defined(__amd64__) || defined(__x86_64__)
 #define CPU_ARCH_AMD64 1
 #elif defined(__arm64__) || defined(__aarch64__)
@@ -123,6 +125,12 @@ class Matrix<1, 1> {
   /// @brief Constructor initializes the matrix with a SIMD data type.
   /// @param rhs The SIMD data type to initialize the matrix.
   Matrix<1, 1>(const _s_data& rhs) { data_ = rhs; }
+
+  Matrix<1, 1>(const SOAContainer<1, 1>& soa_data, const int index) {
+    if (index < 0 || index >= soa_data.GetCapacity())
+      throw std::runtime_error("Index out of range");
+    data_ = _s_load(soa_data.GetElementPtr(0, 0) + index);
+  }
 
   /// @brief Assignment operator to set the matrix to a scalar value.
   /// @param rhs The scalar value to assign to the matrix.

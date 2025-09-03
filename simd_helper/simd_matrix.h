@@ -155,6 +155,14 @@ class Matrix {
         data_[r][c] = Scalar(multi_elements.at(r * kCol + c));
   }
 
+  Matrix(const SOAContainer<kRow, kCol>& soa_data, const int index) {
+    if (index < 0 || index >= soa_data.GetCapacity())
+      throw std::runtime_error("Index out of range");
+    for (int r = 0; r < kRow; ++r)
+      for (int c = 0; c < kCol; ++c)
+        data_[r][c] = Scalar(soa_data.GetElementPtr(r, c) + index);
+  }
+
   Matrix& operator=(const EigenMatrix& rhs) {
     for (int r = 0; r < kRow; ++r)
       for (int c = 0; c < kCol; ++c) data_[r][c] = Scalar(rhs(r, c));

@@ -57,7 +57,7 @@ class SOAContainer {
   }
 
   void Append(const Eigen::Matrix<float, kRow, kCol>& value) {
-    if (index_ >= capacity_ - 1) return;
+    if (index_ >= capacity_) return;
     for (int row = 0; row < kRow; ++row)
       for (int col = 0; col < kCol; ++col)
         data_[row][col][index_] = value(row, col);
