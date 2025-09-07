@@ -2,6 +2,7 @@
 #define SIMD_HELPER_SIMD_MATRIX_H_
 
 #include "simd_scalar.h"
+#include "soa_container.h"
 
 #include "Eigen/Dense"
 
@@ -155,6 +156,12 @@ class Matrix {
         data_[r][c] = Scalar(multi_elements.at(r * kCol + c));
   }
 
+  Matrix(const SOAContainer<kRow, kCol>& soa_container, const int start_index) {
+    for (int r = 0; r < kRow; ++r)
+      for (int c = 0; c < kCol; ++c)
+        data_[r][c] = Scalar(soa_container.GetElementPtr(r, c) + start_index);
+  }
+
   Matrix& operator=(const EigenMatrix& rhs) {
     for (int r = 0; r < kRow; ++r)
       for (int c = 0; c < kCol; ++c) data_[r][c] = Scalar(rhs(r, c));
@@ -180,7 +187,8 @@ class Matrix {
   /// @tparam kBlockRow The number of rows in the block.
   /// @tparam kBlockCol The number of columns in the block.
   /// @param start_row The starting row index of block on the original matrix
-  /// @param start_col The starting column index of block on the original matrix
+  /// @param start_col The starting column index of block on the original
+  /// matrix
   /// @return BlockMatrix<kBlockRow, kBlockCol> representing the block of the
   /// matrix
   template <int kBlockRow, int kBlockCol>
