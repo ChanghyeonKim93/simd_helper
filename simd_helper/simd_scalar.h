@@ -4,7 +4,7 @@
 #include <iostream>
 #include <limits>
 
-#include "soa_container.h"
+#include "simd_helper/soa_container.h"
 
 #if defined(__amd64__) || defined(__x86_64__)
 #define CPU_ARCH_AMD64 1
@@ -12,10 +12,8 @@
 #define CPU_ARCH_ARM 1
 #endif
 
-namespace {
-
 #if defined(CPU_ARCH_AMD64)
-#include "immintrin.h"
+#include <immintrin.h>
 
 #define __SIMD_DATA_STRIDE 8
 
@@ -38,7 +36,7 @@ using _s_data = __m256;
 #define _s_max _mm256_max_ps
 
 #elif defined(CPU_ARCH_ARM)
-#include "arm_neon.h"
+#include <arm_neon.h>
 
 #define __SIMD_DATA_STRIDE 4
 
@@ -61,15 +59,12 @@ using _s_data = float32x4_t;
 #define _s_max vmaxq_f32
 
 #else
-#error \
-    "Unsupported architecture. Please define either __amd64__, __x86_64__, __arm64__, or __aarch64__."
+#error "Unsupported architecture."
 #endif
 
 _s_data __one{_s_set1(1.0f)};
 _s_data __minus_one{_s_set1(-1.0f)};
 _s_data __zero{_s_set1(0.0f)};
-
-}  // namespace
 
 namespace simd {
 
@@ -96,7 +91,7 @@ class Matrix<1, 1> {
 
   /// @brief Constructor initializes all elements to the given input value.
   /// @param input The value to initialize all elements of the matrix.
-  Matrix<1, 1>(const float input) { data_ = _s_set1(input); }
+  explicit Matrix<1, 1>(const float input) { data_ = _s_set1(input); }
 
 #if defined(CPU_ARCH_AMD64)
   /// @brief Constructor initializes the matrix with 8 float values.
@@ -120,11 +115,11 @@ class Matrix<1, 1> {
 
   /// @brief Constructor initializes the matrix with a pointer to float data.
   /// @param rhs Pointer to float data to initialize the matrix.
-  Matrix<1, 1>(const float* rhs) { data_ = _s_load(rhs); }
+  explicit Matrix<1, 1>(const float* rhs) { data_ = _s_load(rhs); }
 
   /// @brief Constructor initializes the matrix with a SIMD data type.
   /// @param rhs The SIMD data type to initialize the matrix.
-  Matrix<1, 1>(const _s_data& rhs) { data_ = rhs; }
+  explicit Matrix<1, 1>(const _s_data& rhs) { data_ = rhs; }
 
   Matrix(const SOAContainer<1, 1>& soa_container, const int start_index) {
     data_ = _s_load(soa_container.GetElementPtr(0, 0) + start_index);
@@ -147,74 +142,82 @@ class Matrix<1, 1> {
 
   Matrix<1, 1> operator<(const float scalar) const {
 #if defined(CPU_ARCH_AMD64)
-    return _mm256_and_ps(_mm256_cmp_ps(data_, _s_set1(scalar), _CMP_LT_OS),
-                         __one);
+    return Matrix<1, 1>(_mm256_and_ps(
+        _mm256_cmp_ps(data_, _s_set1(scalar), _CMP_LT_OS), __one));
 #elif defined(CPU_ARCH_ARM)
-    return vbslq_f32(vcltq_f32(data_, vdupq_n_f32(scalar)), __one, __zero);
+    return Matrix<1, 1>(
+        vbslq_f32(vcltq_f32(data_, vdupq_n_f32(scalar)), __one, __zero));
 #endif
   }
 
   Matrix<1, 1> operator<=(const float scalar) const {
 #if defined(CPU_ARCH_AMD64)
-    return _mm256_and_ps(_mm256_cmp_ps(data_, _s_set1(scalar), _CMP_LE_OS),
-                         __one);
+    return Matrix<1, 1>(_mm256_and_ps(
+        _mm256_cmp_ps(data_, _s_set1(scalar), _CMP_LE_OS), __one));
 #elif defined(CPU_ARCH_ARM)
-    return vbslq_f32(vcleq_f32(data_, vdupq_n_f32(scalar)), __one, __zero);
+    return Matrix<1, 1>(
+        vbslq_f32(vcleq_f32(data_, vdupq_n_f32(scalar)), __one, __zero));
 #endif
   }
 
   Matrix<1, 1> operator>(const float scalar) const {
 #if defined(CPU_ARCH_AMD64)
-    return _mm256_and_ps(_mm256_cmp_ps(data_, _s_set1(scalar), _CMP_GT_OS),
-                         __one);
+    return Matrix<1, 1>(_mm256_and_ps(
+        _mm256_cmp_ps(data_, _s_set1(scalar), _CMP_GT_OS), __one));
 #elif defined(CPU_ARCH_ARM)
-    return vbslq_f32(vcgtq_f32(data_, vdupq_n_f32(scalar)), __one, __zero);
+    return Matrix<1, 1>(
+        vbslq_f32(vcgtq_f32(data_, vdupq_n_f32(scalar)), __one, __zero));
 #endif
   }
 
   Matrix<1, 1> operator>=(const float scalar) const {
 #if defined(CPU_ARCH_AMD64)
-    return _mm256_and_ps(_mm256_cmp_ps(data_, _s_set1(scalar), _CMP_GE_OS),
-                         __one);
+    return Matrix<1, 1>(_mm256_and_ps(
+        _mm256_cmp_ps(data_, _s_set1(scalar), _CMP_GE_OS), __one));
 #elif defined(CPU_ARCH_ARM)
-    return vbslq_f32(vcgeq_f32(data_, vdupq_n_f32(scalar)), __one, __zero);
+    return Matrix<1, 1>(Matrix<1, 1>(
+        vbslq_f32(vcgeq_f32(data_, vdupq_n_f32(scalar)), __one, __zero)));
 #endif
   }
 
   Matrix<1, 1> operator<(const Matrix<1, 1>& rhs) const {
 #if defined(CPU_ARCH_AMD64)
-    return _mm256_and_ps(_mm256_cmp_ps(data_, rhs.data_, _CMP_LT_OS), __one);
+    return Matrix<1, 1>(
+        _mm256_and_ps(_mm256_cmp_ps(data_, rhs.data_, _CMP_LT_OS), __one));
 #elif defined(CPU_ARCH_ARM)
-    return vbslq_f32(vcltq_f32(data_, rhs.data_), __one, __zero);
+    return Matrix<1, 1>(vbslq_f32(vcltq_f32(data_, rhs.data_), __one, __zero));
 #endif
   }
 
   Matrix<1, 1> operator<=(const Matrix<1, 1>& rhs) const {
 #if defined(CPU_ARCH_AMD64)
-    return _mm256_and_ps(_mm256_cmp_ps(data_, rhs.data_, _CMP_LE_OS), __one);
+    return Matrix<1, 1>(
+        _mm256_and_ps(_mm256_cmp_ps(data_, rhs.data_, _CMP_LE_OS), __one));
 #elif defined(CPU_ARCH_ARM)
-    return vbslq_f32(vcleq_f32(data_, rhs.data_), __one, __zero);
+    return Matrix<1, 1>(vbslq_f32(vcleq_f32(data_, rhs.data_), __one, __zero));
 #endif
   }
 
   Matrix<1, 1> operator>(const Matrix<1, 1>& rhs) const {
 #if defined(CPU_ARCH_AMD64)
-    return _mm256_and_ps(_mm256_cmp_ps(data_, rhs.data_, _CMP_GT_OS), __one);
+    return Matrix<1, 1>(
+        _mm256_and_ps(_mm256_cmp_ps(data_, rhs.data_, _CMP_GT_OS), __one));
 #elif defined(CPU_ARCH_ARM)
-    return vbslq_f32(vcgtq_f32(data_, rhs.data_), __one, __zero);
+    return Matrix<1, 1>(vbslq_f32(vcgtq_f32(data_, rhs.data_), __one, __zero));
 #endif
   }
 
   Matrix<1, 1> operator>=(const Matrix<1, 1>& rhs) const {
 #if defined(CPU_ARCH_AMD64)
-    return _mm256_and_ps(_mm256_cmp_ps(data_, rhs.data_, _CMP_GE_OS), __one);
+    return Matrix<1, 1>(
+        _mm256_and_ps(_mm256_cmp_ps(data_, rhs.data_, _CMP_GE_OS), __one));
 #elif defined(CPU_ARCH_ARM)
-    return vbslq_f32(vcgeq_f32(data_, rhs.data_), __one, __zero);
+    return Matrix<1, 1>(vbslq_f32(vcgeq_f32(data_, rhs.data_), __one, __zero));
 #endif
   }
 
   // Arithmetic operations
-  Matrix<1, 1> operator+() const { return *this; }
+  Matrix<1, 1> operator+() const { return Matrix<1, 1>(*this); }
 
   Matrix<1, 1> operator-() const { return Matrix<1, 1>(_s_sub(__zero, data_)); }
 
@@ -400,12 +403,12 @@ class Matrix<1, 1> {
 
   friend std::ostream& operator<<(std::ostream& outputStream,
                                   const Matrix<1, 1>& scalar) {
-    float multi_scalars[__SIMD_DATA_STRIDE];
+    float multi_scalars[Scalar::data_stride];
     scalar.StoreData(multi_scalars);
     std::cout << "[";
-    for (int i = 0; i < __SIMD_DATA_STRIDE; ++i) {
+    for (int i = 0; i < Scalar::data_stride; ++i) {
       std::cout << "[" << multi_scalars[i] << "]";
-      if (i != __SIMD_DATA_STRIDE - 1) std::cout << ",\n";
+      if (i != Scalar::data_stride - 1) std::cout << ",\n";
     }
     std::cout << "]" << std::endl;
     return outputStream;
@@ -423,4 +426,4 @@ inline Scalar exp(const Scalar& input) { return input.exp(); }
 
 }  // namespace simd
 
-#endif  // NONLINEAR_OPTIMIZER_SIMD_HELPER_SIMD_SCALAR_H_
+#endif  // SIMD_HELPER_SIMD_SCALAR_H_

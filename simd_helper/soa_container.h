@@ -44,7 +44,7 @@ class SOAContainer {
  public:
   SOAContainer() {}
 
-  SOAContainer(const int num_data) : capacity_(num_data) {
+  explicit SOAContainer(const int num_data) : capacity_(num_data) {
     for (int row = 0; row < kRow; ++row)
       for (int col = 0; col < kCol; ++col)
         data_[row][col] = simd::GetAlignedMemory<float>(num_data);

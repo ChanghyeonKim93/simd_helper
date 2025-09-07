@@ -1,8 +1,10 @@
 #ifndef SIMD_HELPER_SIMD_MATRIX_H_
 #define SIMD_HELPER_SIMD_MATRIX_H_
 
-#include "simd_scalar.h"
-#include "soa_container.h"
+#include <vector>
+
+#include "simd_helper/simd_scalar.h"
+#include "simd_helper/soa_container.h"
 
 #include "Eigen/Dense"
 
@@ -106,7 +108,7 @@ class Matrix {
       for (int c = 0; c < kCol; ++c) data_[r][c] = Scalar(0.0f);
   }
 
-  Matrix(const float input) {
+  explicit Matrix(const float input) {
     for (int r = 0; r < kRow; ++r)
       for (int c = 0; c < kCol; ++c) data_[r][c] = Scalar(input);
   }
@@ -117,25 +119,26 @@ class Matrix {
   }
 
   template <int OtherRow, int OtherCol>
-  Matrix(const typename Matrix<OtherRow, OtherCol>::template BlockMatrix<
-         kRow, kCol>& block) {
+  explicit Matrix(
+      const typename Matrix<OtherRow, OtherCol>::template BlockMatrix<
+          kRow, kCol>& block) {
     for (int r = 0; r < kRow; ++r)
       for (int c = 0; c < kCol; ++c) (*this)(r, c) = block(r, c);
   }
 
-  Matrix(const EigenMatrix& matrix) {
+  explicit Matrix(const EigenMatrix& matrix) {
     for (int r = 0; r < kRow; ++r)
       for (int c = 0; c < kCol; ++c) data_[r][c] = Scalar(matrix(r, c));
   }
 
-  Matrix(const std::vector<EigenMatrix>& matrices) {
-    if (matrices.size() != data_stride)
+  explicit Matrix(const std::vector<EigenMatrix>& matrices) {
+    if (matrices.size() != Matrix::data_stride)
       throw std::runtime_error("Wrong number of data.");
 
-    float buf[data_stride];
+    float buf[Matrix::data_stride];
     for (int r = 0; r < kRow; ++r) {
       for (int c = 0; c < kCol; ++c) {
-        for (size_t k = 0; k < simd::Scalar::data_stride; ++k)
+        for (size_t k = 0; k < Matrix::data_stride; ++k)
           buf[k] = matrices[k](r, c);
         data_[r][c] = Scalar(buf);
       }
@@ -148,7 +151,7 @@ class Matrix {
   /// from the (0,0) position of the multiple matrices.
   /// @param multi_elements Vector of pointers to multiple float data to
   /// initialize the matrix.
-  Matrix(const std::vector<float*>& multi_elements) {
+  explicit Matrix(const std::vector<float*>& multi_elements) {
     if (multi_elements.size() != kRow * kCol)
       throw std::runtime_error("Wrong number of data");
     for (int r = 0; r < kRow; ++r)
@@ -417,13 +420,13 @@ class Matrix {
   /// @param multi_matrices  Vector of Eigen matrices where the data will be
   /// stored.
   void StoreData(std::vector<EigenMatrix>* multi_matrices) const {
-    if (multi_matrices->size() != data_stride)
-      multi_matrices->resize(data_stride);
-    float buf[data_stride];
+    if (multi_matrices->size() != Matrix::data_stride)
+      multi_matrices->resize(Matrix::data_stride);
+    float buf[Matrix::data_stride];
     for (int r = 0; r < kRow; ++r) {
       for (int c = 0; c < kCol; ++c) {
         data_[r][c].StoreData(buf);
-        for (size_t k = 0; k < data_stride; ++k)
+        for (size_t k = 0; k < Matrix::data_stride; ++k)
           multi_matrices->at(k)(r, c) = buf[k];
       }
     }
