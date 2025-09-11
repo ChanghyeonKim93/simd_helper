@@ -31,17 +31,26 @@ using SimdFloat = float32x4_t;
 namespace simd {
 
 #if defined(CPU_ARCH_AMD64)
+/// @brief Set the SIMD register with 8 float values
+/// @param n1 to n8 The values to set in the SIMD register.
 inline SimdFloat Set(float n1, float n2, float n3, float n4, float n5, float n6,
                      float n7, float n8) {
+  // Note: The order of parameters is reversed to match the AMD64 intrinsic
+  // function's requirement.
   return _mm256_set_ps(n8, n7, n6, n5, n4, n3, n2, n1);
 }
 #elif defined(CPU_ARCH_ARM)
+/// @brief Set the SIMD register with 4 float values.
+/// @param n1 to n4 The values to set in the SIMD register.
 inline SimdFloat Set(float n1, float n2, float n3, float n4) {
   const float temp[] = {n1, n2, n3, n4};
   return vld1q_f32(temp);
 }
 #endif
 
+/// @brief Broadcast a single float value to all elements of the SIMD register
+/// @param input The float value to broadcast
+/// @return The SIMD register with all elements set to the input value
 inline SimdFloat Broadcast(float input) {
 #if defined(CPU_ARCH_AMD64)
   return _mm256_set1_ps(input);
@@ -50,6 +59,9 @@ inline SimdFloat Broadcast(float input) {
 #endif
 }
 
+/// @brief Load float values from memory into a SIMD register
+/// @param input Pointer to the float values in memory
+/// @return The SIMD register containing the loaded float values
 inline SimdFloat Load(const float* input) {
 #if defined(CPU_ARCH_AMD64)
   return _mm256_load_ps(input);
@@ -58,6 +70,9 @@ inline SimdFloat Load(const float* input) {
 #endif
 }
 
+/// @brief Store float values from a SIMD register into memory
+/// @param output Pointer to the memory location to store the float values
+/// @param input The SIMD register containing the float values to store
 inline void Store(float* output, const SimdFloat& input) {
 #if defined(CPU_ARCH_AMD64)
   _mm256_store_ps(output, input);
@@ -66,6 +81,10 @@ inline void Store(float* output, const SimdFloat& input) {
 #endif
 }
 
+/// @brief Add two SIMD registers element-wise
+/// @param a The first SIMD register
+/// @param b The second SIMD register
+/// @return The result of the element-wise addition
 inline SimdFloat Add(const SimdFloat& a, const SimdFloat& b) {
 #if defined(CPU_ARCH_AMD64)
   return _mm256_add_ps(a, b);
@@ -74,6 +93,10 @@ inline SimdFloat Add(const SimdFloat& a, const SimdFloat& b) {
 #endif
 }
 
+/// @brief Subtract two SIMD registers element-wise
+/// @param a The first SIMD register
+/// @param b The second SIMD register
+/// @return The result of the element-wise subtraction
 inline SimdFloat Subtract(const SimdFloat& a, const SimdFloat& b) {
 #if defined(CPU_ARCH_AMD64)
   return _mm256_sub_ps(a, b);
@@ -82,6 +105,9 @@ inline SimdFloat Subtract(const SimdFloat& a, const SimdFloat& b) {
 #endif
 }
 
+/// @brief Multiply two SIMD registers element-wise
+/// @param a The first SIMD register
+/// @param b The second SIMD registerSSS
 inline SimdFloat Multiply(const SimdFloat& a, const SimdFloat& b) {
 #if defined(CPU_ARCH_AMD64)
   return _mm256_mul_ps(a, b);
@@ -90,6 +116,10 @@ inline SimdFloat Multiply(const SimdFloat& a, const SimdFloat& b) {
 #endif
 }
 
+/// @brief Divide two SIMD registers element-wise
+/// @param a The numerator SIMD register
+/// @param b The denominator SIMD register
+/// @return The result of the element-wise division
 inline SimdFloat Divide(const SimdFloat& a, const SimdFloat& b) {
 #if defined(CPU_ARCH_AMD64)
   return _mm256_div_ps(a, b);
@@ -98,6 +128,9 @@ inline SimdFloat Divide(const SimdFloat& a, const SimdFloat& b) {
 #endif
 }
 
+/// @brief Get the reciprocal of each element in the SIMD register
+/// @param input The SIMD register to compute the reciprocal for
+/// @return The SIMD register containing the reciprocals of the input elements
 inline SimdFloat GetReciprocalNumber(const SimdFloat& input) {
 #if defined(CPU_ARCH_AMD64)
   return _mm256_rcp_ps(input);
@@ -106,6 +139,9 @@ inline SimdFloat GetReciprocalNumber(const SimdFloat& input) {
 #endif
 }
 
+/// @brief Round each element in the SIMD register to the nearest integer
+/// @param input The SIMD register to round
+/// @return The SIMD register containing the rounded values
 inline SimdFloat Round(const SimdFloat& input) {
 #if defined(CPU_ARCH_AMD64)
   return _mm256_round_ps(input, _MM_FROUND_NINT);
@@ -114,6 +150,9 @@ inline SimdFloat Round(const SimdFloat& input) {
 #endif
 }
 
+/// @brief Compute the ceiling of each element in the SIMD register
+/// @param input The SIMD register to compute the ceiling for
+/// @return The SIMD register containing the ceiling values
 inline SimdFloat Ceil(const SimdFloat& input) {
 #if defined(CPU_ARCH_AMD64)
   return _mm256_ceil_ps(input);
@@ -122,6 +161,9 @@ inline SimdFloat Ceil(const SimdFloat& input) {
 #endif
 }
 
+/// @brief Compute the floor of each element in the SIMD register
+/// @param input The SIMD register to compute the floor for
+/// @return The SIMD register containing the floor values
 inline SimdFloat Floor(const SimdFloat& input) {
 #if defined(CPU_ARCH_AMD64)
   return _mm256_floor_ps(input);
@@ -130,6 +172,9 @@ inline SimdFloat Floor(const SimdFloat& input) {
 #endif
 }
 
+/// @brief Compute the square root of each element in the SIMD register
+/// @param input The SIMD register to compute the square root for
+/// @return The SIMD register containing the square root values
 inline SimdFloat Sqrt(const SimdFloat& input) {
 #if defined(CPU_ARCH_AMD64)
   return _mm256_sqrt_ps(input);
@@ -138,6 +183,10 @@ inline SimdFloat Sqrt(const SimdFloat& input) {
 #endif
 }
 
+/// @brief Compute the exponential of each element in the SIMD register
+/// @param a The SIMD register to compute the exponential for
+/// @param b The SIMD register to compute the exponential for
+/// @return The SIMD register containing the exponential values
 inline SimdFloat Min(const SimdFloat& a, const SimdFloat& b) {
 #if defined(CPU_ARCH_AMD64)
   return _mm256_min_ps(a, b);
@@ -146,6 +195,10 @@ inline SimdFloat Min(const SimdFloat& a, const SimdFloat& b) {
 #endif
 }
 
+/// @brief Compute the maximum of each element in the SIMD register
+/// @param a The first SIMD register
+/// @param b The second SIMD register
+/// @return The SIMD register containing the maximum values
 inline SimdFloat Max(const SimdFloat& a, const SimdFloat& b) {
 #if defined(CPU_ARCH_AMD64)
   return _mm256_max_ps(a, b);
@@ -154,6 +207,10 @@ inline SimdFloat Max(const SimdFloat& a, const SimdFloat& b) {
 #endif
 }
 
+/// @brief Compute the absolute value of each element in the SIMD register
+/// @param input The SIMD register to compute the absolute value for
+/// @param threshold The threshold value to compare against
+/// @return The SIMD register containing the absolute values
 inline SimdFloat IsGreaterThan(const SimdFloat& input,
                                const SimdFloat& threshold) {
 #if defined(CPU_ARCH_AMD64)
@@ -163,6 +220,10 @@ inline SimdFloat IsGreaterThan(const SimdFloat& input,
 #endif
 }
 
+/// @brief Check if each element in the SIMD register is less than the threshold
+/// @param input The SIMD register to compare
+/// @param threshold The threshold value to compare against
+/// @return The SIMD register containing the comparison results
 inline SimdFloat IsLessThan(const SimdFloat& input,
                             const SimdFloat& threshold) {
 #if defined(CPU_ARCH_AMD64)
@@ -172,6 +233,11 @@ inline SimdFloat IsLessThan(const SimdFloat& input,
 #endif
 }
 
+/// @brief Check if each element in the SIMD register is greater than or equal
+/// to the
+/// @param input The SIMD register to compare
+/// @param threshold The threshold value to compare against
+/// @return The SIMD register containing the comparison results
 inline SimdFloat IsGreaterThanOrEqual(const SimdFloat& input,
                                       const SimdFloat& threshold) {
 #if defined(CPU_ARCH_AMD64)
@@ -181,6 +247,11 @@ inline SimdFloat IsGreaterThanOrEqual(const SimdFloat& input,
 #endif
 }
 
+/// @brief Check if each element in the SIMD register is less than or equal to
+/// the
+/// @param input The SIMD register to compare
+/// @param threshold The threshold value to compare against
+/// @return The SIMD register containing the comparison results
 inline SimdFloat IsLessThanOrEqual(const SimdFloat& input,
                                    const SimdFloat& threshold) {
 #if defined(CPU_ARCH_AMD64)
@@ -190,6 +261,12 @@ inline SimdFloat IsLessThanOrEqual(const SimdFloat& input,
 #endif
 }
 
+/// @brief Select elements from two SIMD registers based on a mask
+/// @param mask The mask SIMD register
+/// @param value_for_true The SIMD register to select from when the mask is true
+/// @param value_for_false The SIMD register to select from when the mask is
+/// false
+/// @return The SIMD register containing the selected values
 inline SimdFloat Select(const SimdFloat& mask, const SimdFloat& value_for_true,
                         const SimdFloat& value_for_false) {
 #if defined(CPU_ARCH_AMD64)
