@@ -322,8 +322,12 @@ class Matrix<1, 1> {
 #endif
 
   /// @brief Copy constructor initializes the matrix with another matrix.
-  /// @param rhs The matrix to copy from.
+  /// @param rhs The matrix to copy from
   Matrix<1, 1>(const Matrix<1, 1>& rhs) { data_ = rhs.data_; }
+
+  /// @brief Move constructor initializes the matrix with another matrix.
+  /// @param rhs The matrix to move from
+  Matrix<1, 1>(const Matrix<1, 1>&& rhs) { data_ = std::move(rhs.data_); }
 
   /// @brief Constructor initializes the matrix with a pointer to float data.
   /// @param rhs Pointer to float data to initialize the matrix.
@@ -347,6 +351,11 @@ class Matrix<1, 1> {
 
   Matrix<1, 1>& operator=(const Matrix<1, 1>& rhs) {
     data_ = rhs.data_;
+    return *this;
+  }
+
+  Matrix<1, 1>& operator=(const Matrix<1, 1>&& rhs) {
+    data_ = std::move(rhs.data_);
     return *this;
   }
 
