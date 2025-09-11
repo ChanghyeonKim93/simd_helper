@@ -190,6 +190,15 @@ inline SimdFloat IsLessThanOrEqual(const SimdFloat& input,
 #endif
 }
 
+inline SimdFloat Select(const SimdFloat& mask, const SimdFloat& value_for_true,
+                        const SimdFloat& value_for_false) {
+#if defined(CPU_ARCH_AMD64)
+  return _mm256_blendv_ps(value_for_false, value_for_true, mask);
+#elif defined(CPU_ARCH_ARM)
+  return vbslq_f32(mask, value_for_true, value_for_false);
+#endif
+}
+
 SimdFloat __one{Broadcast(1.0f)};
 SimdFloat __minus_one{Broadcast(-1.0f)};
 SimdFloat __zero{Broadcast(0.0f)};
@@ -231,7 +240,7 @@ class Matrix<1, 1> {
   /// @param n1_to_n4 The values to initialize the matrix.
   Matrix<1, 1>(const float n1, const float n2, const float n3, const float n4) {
     const float temp[] = {n1, n2, n3, n4};
-    data_ = vld1q_f32(temp);
+    data_ = Load(temp);
   }
 #endif
 
@@ -267,80 +276,41 @@ class Matrix<1, 1> {
   // Comparison operations
 
   Matrix<1, 1> operator<(const float scalar) const {
-#if defined(CPU_ARCH_AMD64)
     return Matrix<1, 1>(
-        _mm256_and_ps(IsLessThan(data_, Broadcast(scalar)), __one));
-#elif defined(CPU_ARCH_ARM)
-    return Matrix<1, 1>(
-        vbslq_f32(IsLessThan(data_, Broadcast(scalar)), __one, __zero));
-#endif
+        Select(IsLessThan(data_, Broadcast(scalar)), __one, __zero));
   }
 
   Matrix<1, 1> operator<=(const float scalar) const {
-#if defined(CPU_ARCH_AMD64)
     return Matrix<1, 1>(
-        _mm256_and_ps(IsLessThanOrEqual(data_, Broadcast(scalar)), __one));
-#elif defined(CPU_ARCH_ARM)
-    return Matrix<1, 1>(
-        vbslq_f32(vcleq_f32(data_, Broadcast(scalar)), __one, __zero));
-#endif
+        Select(IsLessThanOrEqual(data_, Broadcast(scalar)), __one, __zero));
   }
 
   Matrix<1, 1> operator>(const float scalar) const {
-#if defined(CPU_ARCH_AMD64)
     return Matrix<1, 1>(
-        _mm256_and_ps(IsGreaterThan(data_, Broadcast(scalar)), __one));
-#elif defined(CPU_ARCH_ARM)
-    return Matrix<1, 1>(
-        vbslq_f32(IsGreaterThan(data_, Broadcast(scalar)), __one, __zero));
-#endif
+        Select(IsGreaterThan(data_, Broadcast(scalar)), __one, __zero));
   }
 
   Matrix<1, 1> operator>=(const float scalar) const {
-#if defined(CPU_ARCH_AMD64)
     return Matrix<1, 1>(
-        _mm256_and_ps(IsGreaterThanOrEqual(data_, Broadcast(scalar)), __one));
-#elif defined(CPU_ARCH_ARM)
-    return Matrix<1, 1>(Matrix<1, 1>(vbslq_f32(
-        IsGreaterThanOrEqual(data_, Broadcast(scalar)), __one, __zero)));
-#endif
+        Select(IsGreaterThanOrEqual(data_, Broadcast(scalar)), __one, __zero));
   }
 
   Matrix<1, 1> operator<(const Matrix<1, 1>& rhs) const {
-#if defined(CPU_ARCH_AMD64)
-    return Matrix<1, 1>(_mm256_and_ps(IsLessThan(data_, rhs.data_), __one));
-#elif defined(CPU_ARCH_ARM)
-    return Matrix<1, 1>(vbslq_f32(IsLessThan(data_, rhs.data_), __one, __zero));
-#endif
+    return Matrix<1, 1>(Select(IsLessThan(data_, rhs.data_), __one, __zero));
   }
 
   Matrix<1, 1> operator<=(const Matrix<1, 1>& rhs) const {
-#if defined(CPU_ARCH_AMD64)
     return Matrix<1, 1>(
-        _mm256_and_ps(IsLessThanOrEqual(data_, rhs.data_), __one));
-#elif defined(CPU_ARCH_ARM)
-    return Matrix<1, 1>(
-        vbslq_f32(IsLessThanOrEqual(data_, rhs.data_), __one, __zero));
-#endif
+        Select(IsLessThanOrEqual(data_, rhs.data_), __one, __zero));
   }
 
   Matrix<1, 1> operator>(const Matrix<1, 1>& rhs) const {
-#if defined(CPU_ARCH_AMD64)
-    return Matrix<1, 1>(_mm256_and_ps(IsGreaterThan(data_, rhs.data_), __one));
-#elif defined(CPU_ARCH_ARM)
-    return Matrix<1, 1>(
-        vbslq_f32(IsGreaterThan(data_, rhs.data_), __one, __zero));
-#endif
+    return Matrix<1, 1>(Select(IsGreaterThan(data_, rhs.data_), __one, __zero));
   }
 
   Matrix<1, 1> operator>=(const Matrix<1, 1>& rhs) const {
-#if defined(CPU_ARCH_AMD64)
     return Matrix<1, 1>(
-        _mm256_and_ps(IsGreaterThanOrEqual(data_, rhs.data_), __one));
-#elif defined(CPU_ARCH_ARM)
-    return Matrix<1, 1>(
-        vbslq_f32(IsGreaterThanOrEqual(data_, rhs.data_), __one, __zero));
-#endif
+        Select(IsGreaterThanOrEqual(data_, rhs.data_), __one, __zero));
   }
 
   // Arithmetic operations
@@ -422,16 +392,8 @@ class Matrix<1, 1> {
   /// @return Matrix<1, 1> with elements set to 1.0f for positive elements and
   /// -1.0f for negative elements.
   Matrix<1, 1> sign() const {
-#if defined(CPU_ARCH_AMD64)
-    __m256 is_positive =
-        _mm256_cmp_ps(data_, __zero, _CMP_GE_OS);  // data_ >= 0.0
-    __m256 result = _mm256_blendv_ps(__minus_one, __one, is_positive);
-#elif defined(CPU_ARCH_ARM)
-    // Compare data_ >= 0.0
-    uint32x4_t is_positive = vcgeq_f32(data_, __zero);  // data_ >= 0.0
-    float32x4_t result = vbslq_f32(is_positive, __one, __minus_one);
-#endif
-    return Matrix<1, 1>(result);
+    const SimdFloat positive_mask = IsGreaterThanOrEqual(data_, __zero);
+    return Matrix<1, 1>(Select(positive_mask, __one, __minus_one));
   }
 
   /// @brief Returns the absolute value of the matrix elements.
@@ -454,16 +416,15 @@ class Matrix<1, 1> {
   /// range reduction method.  e^x = 2^n * e^r where n = floor(x / ln(2)),
   /// r = x - n * ln(2)
   Matrix<1, 1> exp() const {
-    const float min_input = -87.0f;
-    const float max_input = 88.0f;
-
-    SimdFloat min_val = Broadcast(min_input);
-    SimdFloat max_val = Broadcast(max_input);
-    SimdFloat clamped_x = Min(Max(data_, min_val), max_val);
-
-    // Precalculate constants
+    constexpr float kMinValidInput = -87.0f;
+    constexpr float kMaxValidInput = 88.0f;
     const SimdFloat ln2 = Broadcast(0.693147180559945f);     // ln(2)
     const SimdFloat inv_ln2 = Broadcast(1.44269504088896f);  // 1/ln(2)
+
+    const SimdFloat min_valid_input = Broadcast(kMinValidInput);
+    const SimdFloat max_valid_input = Broadcast(kMaxValidInput);
+    const SimdFloat clamped_x =
+        Min(Max(data_, min_valid_input), max_valid_input);
 
     const auto& x = clamped_x;
 
@@ -500,24 +461,24 @@ class Matrix<1, 1> {
 
     // 2^n calculation
     int32x4_t exponent_bits = vshlq_n_s32(n_int, 23);
-    float32x4_t pow2n = vreinterpretq_f32_s32(
+    SimdFloat pow2n = vreinterpretq_f32_s32(
         vaddq_s32(exponent_bits, vreinterpretq_s32_f32(Broadcast(1.0f))));
 #endif
     SimdFloat result = Multiply(pow2n, exp_r__);
 
     // Handle overflow and underflow
 #if defined(CPU_ARCH_AMD64)
-    SimdFloat is_too_small = _mm256_cmp_ps(data_, min_val, _CMP_LT_OS);
+    SimdFloat is_too_small = _mm256_cmp_ps(data_, min_valid_input, _CMP_LT_OS);
     result = _mm256_andnot_ps(is_too_small, result);
-    SimdFloat is_too_large = _mm256_cmp_ps(data_, max_val, _CMP_GT_OS);
+    SimdFloat is_too_large = _mm256_cmp_ps(data_, max_valid_input, _CMP_GT_OS);
     SimdFloat inf_val = _mm256_set1_ps(std::numeric_limits<float>::infinity());
     result = _mm256_blendv_ps(result, inf_val, is_too_large);
 #elif defined(CPU_ARCH_ARM)
-    uint32x4_t is_too_small = vcltq_f32(data_, min_val);
+    uint32x4_t is_too_small = vcltq_f32(data_, min_valid_input);
     result = vreinterpretq_f32_u32(
         vbicq_u32(vreinterpretq_u32_f32(result), is_too_small));
-    uint32x4_t is_too_large = vcgtq_f32(data_, max_val);
-    float32x4_t inf_val = Broadcast(std::numeric_limits<float>::infinity());
+    uint32x4_t is_too_large = vcgtq_f32(data_, max_valid_input);
+    SimdFloat inf_val = Broadcast(std::numeric_limits<float>::infinity());
     result = vbslq_f32(is_too_large, inf_val, result);
 #endif
 
