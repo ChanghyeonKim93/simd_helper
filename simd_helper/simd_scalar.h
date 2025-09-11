@@ -554,9 +554,9 @@ class Matrix<1, 1> {
 
     // Handle overflow and underflow
 #if defined(CPU_ARCH_AMD64)
-    SimdFloat is_too_small = _mm256_cmp_ps(data_, min_valid_input, _CMP_LT_OS);
+    SimdFloat is_too_small = IsLessThan(data_, min_valid_input);
     result = _mm256_andnot_ps(is_too_small, result);
-    SimdFloat is_too_large = _mm256_cmp_ps(data_, max_valid_input, _CMP_GT_OS);
+    SimdFloat is_too_large = IsGreaterThan(data_, max_valid_input);
     SimdFloat inf_val = _mm256_set1_ps(std::numeric_limits<float>::infinity());
     result = _mm256_blendv_ps(result, inf_val, is_too_large);
 #elif defined(CPU_ARCH_ARM)
