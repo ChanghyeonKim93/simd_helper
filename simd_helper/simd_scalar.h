@@ -64,7 +64,7 @@ inline PackedFloat32 Set(float n1, float n2, float n3, float n4, float n5,
 #elif defined(CPU_ARCH_ARM)
 /// @brief Set the SIMD register with 4 float values.
 /// @param n1 to n4 The values to set in the SIMD register.
-inline SimdFloat Set(float n1, float n2, float n3, float n4) {
+inline PackedFloat32 Set(float n1, float n2, float n3, float n4) {
   const float temp[] = {n1, n2, n3, n4};
   return vld1q_f32(temp);
 }
@@ -514,10 +514,10 @@ class Matrix<1, 1> {
     const PackedFloat32 minus_zero__ = Broadcast(-0.0f);
     const PackedFloat32 result = _mm256_andnot_ps(minus_zero__, data_);
 #elif defined(CPU_ARCH_ARM)
-    uint32x4_t sign_mask = vdupq_n_u32(0x7FFFFFFF);
-    uint32x4_t data_as_int = vreinterpretq_u32_f32(data_);
-    uint32x4_t abs_as_int = vandq_u32(data_as_int, sign_mask);
-    SimdFloat result = vreinterpretq_f32_u32(abs_as_int);
+    PackedUInt32 sign_mask = vdupq_n_u32(0x7FFFFFFF);
+    PackedUInt32 data_as_int = vreinterpretq_u32_f32(data_);
+    PackedUInt32 abs_as_int = vandq_u32(data_as_int, sign_mask);
+    PackedFloat32 result = vreinterpretq_f32_u32(abs_as_int);
 #endif
     return Matrix<1, 1>(result);
   }
@@ -572,7 +572,7 @@ class Matrix<1, 1> {
 
     // 2^n calculation
     PackedInt32 exponent_bits = vshlq_n_s32(n_int, 23);
-    SimdFloat pow2n = vreinterpretq_f32_s32(
+    PackedFloat32 pow2n = vreinterpretq_f32_s32(
         vaddq_s32(exponent_bits, vreinterpretq_s32_f32(Broadcast(1.0f))));
 #endif
     PackedFloat32 result = Multiply(pow2n, exp_r__);
@@ -590,7 +590,7 @@ class Matrix<1, 1> {
     result = vreinterpretq_f32_u32(
         vbicq_u32(vreinterpretq_u32_f32(result), is_too_small));
     PackedUInt32 is_too_large = vcgtq_f32(data_, max_valid_input);
-    SimdFloat inf_val = Broadcast(std::numeric_limits<float>::infinity());
+    PackedFloat32 inf_val = Broadcast(std::numeric_limits<float>::infinity());
     result = vbslq_f32(is_too_large, inf_val, result);
 #endif
 
