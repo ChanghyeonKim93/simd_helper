@@ -216,7 +216,7 @@ inline SimdFloat IsGreaterThan(const SimdFloat& input,
 #if defined(CPU_ARCH_AMD64)
   return _mm256_cmp_ps(input, threshold, _CMP_GT_OS);
 #elif defined(CPU_ARCH_ARM)
-  return vcgtq_f32(input, threshold);
+  return vreinterpretq_f32_u32(vcgtq_f32(input, threshold));
 #endif
 }
 
@@ -229,7 +229,7 @@ inline SimdFloat IsLessThan(const SimdFloat& input,
 #if defined(CPU_ARCH_AMD64)
   return _mm256_cmp_ps(input, threshold, _CMP_LT_OS);
 #elif defined(CPU_ARCH_ARM)
-  return vcltq_f32(input, threshold);
+  return vreinterpretq_f32_u32(vcltq_f32(input, threshold));
 #endif
 }
 
@@ -243,7 +243,7 @@ inline SimdFloat IsGreaterThanOrEqual(const SimdFloat& input,
 #if defined(CPU_ARCH_AMD64)
   return _mm256_cmp_ps(input, threshold, _CMP_GE_OS);
 #elif defined(CPU_ARCH_ARM)
-  return vcgeq_f32(input, threshold);
+  return vreinterpretq_f32_u32(vcgeq_f32(input, threshold));
 #endif
 }
 
@@ -257,7 +257,7 @@ inline SimdFloat IsLessThanOrEqual(const SimdFloat& input,
 #if defined(CPU_ARCH_AMD64)
   return _mm256_cmp_ps(input, threshold, _CMP_LE_OS);
 #elif defined(CPU_ARCH_ARM)
-  return vcleq_f32(input, threshold);
+  return vreinterpretq_f32_u32(vcleq_f32(input, threshold));
 #endif
 }
 
@@ -272,7 +272,8 @@ inline SimdFloat Select(const SimdFloat& mask, const SimdFloat& value_for_true,
 #if defined(CPU_ARCH_AMD64)
   return _mm256_blendv_ps(value_for_false, value_for_true, mask);
 #elif defined(CPU_ARCH_ARM)
-  return vbslq_f32(mask, value_for_true, value_for_false);
+  return vbslq_f32(vreinterpretq_u32_f32(mask), value_for_true,
+                   value_for_false);
 #endif
 }
 
