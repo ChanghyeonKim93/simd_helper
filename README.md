@@ -13,7 +13,8 @@ Simd helper is a lightweight header-only C++ library wrapping SIMD operations fo
 ## How to use
 ### Dependencies
 * [Eigen](https://eigen.tuxfamily.org)
-* C++ version > C++11
+* C++17 or higher
+* [GoogleTest](https://github.com/google/googletest) (only when building the unit tests)
 
 ### Installation
 1. Clone repository 
@@ -27,8 +28,10 @@ git clone https://github.com/changhyeonkim93/simd_helper
 cd ${YOUR_WORKSPACE}/simd_helper
 mkdir build
 cd build
-sudo make -j${nproc} install
+cmake .. -DCMAKE_BUILD_TYPE=Release
+sudo make -j$(nproc) install
 ```
+* To skip building the unit tests (no GTest required): `cmake .. -DBUILD_TESTING=OFF`
 
 ### Integration `simd_helper` to project
 
