@@ -1,5 +1,6 @@
 #include <cassert>
 #include <memory>
+#include <utility>
 
 #include "gtest/gtest.h"
 
@@ -532,6 +533,114 @@ TEST_F(CalculationTest, LossTest) {
   d2loss__.StoreData(simd_result);
   for (size_t k = 0; k < simd::Scalar::data_stride; ++k)
     EXPECT_FLOAT_EQ(d2loss_true[k], simd_result[k]);
+}
+
+TEST_F(CalculationTest, MatrixFloatArithmeticTest) {
+  simd::Matrix<3, 3> M__(2.0f);
+
+  const auto expect_all_elements = [](const simd::Matrix<3, 3>& mat,
+                                      const float expected) {
+    float buf[8];
+    for (int r = 0; r < 3; ++r) {
+      for (int c = 0; c < 3; ++c) {
+        mat(r, c).StoreData(buf);
+        for (size_t k = 0; k < simd::Scalar::data_stride; ++k)
+          EXPECT_FLOAT_EQ(expected, buf[k]);
+      }
+    }
+  };
+
+  expect_all_elements(M__ + 1.0f, 3.0f);
+  expect_all_elements(M__ - 1.0f, 1.0f);
+  expect_all_elements(M__ * 3.0f, 6.0f);
+  expect_all_elements(M__ / 2.0f, 1.0f);
+  expect_all_elements(3.0f * M__, 6.0f);  // friend overload must match
+}
+
+TEST_F(CalculationTest, CwiseOperationsTest) {
+  float buf[8];
+
+  simd::Matrix<2, 2> M__(4.0f);
+  const auto sqrt__ = M__.cwiseSqrt();
+  for (int r = 0; r < 2; ++r) {
+    for (int c = 0; c < 2; ++c) {
+      sqrt__(r, c).StoreData(buf);
+      for (size_t k = 0; k < simd::Scalar::data_stride; ++k)
+        EXPECT_FLOAT_EQ(2.0f, buf[k]);
+    }
+  }
+
+  simd::Matrix<2, 2> N__(-3.0f);
+  const auto sign__ = N__.cwiseSign();
+  const auto abs__ = N__.cwiseAbs();
+  for (int r = 0; r < 2; ++r) {
+    for (int c = 0; c < 2; ++c) {
+      sign__(r, c).StoreData(buf);
+      for (size_t k = 0; k < simd::Scalar::data_stride; ++k)
+        EXPECT_FLOAT_EQ(-1.0f, buf[k]);
+      abs__(r, c).StoreData(buf);
+      for (size_t k = 0; k < simd::Scalar::data_stride; ++k)
+        EXPECT_FLOAT_EQ(3.0f, buf[k]);
+    }
+  }
+}
+
+TEST_F(CalculationTest, MultiValueConstructorOrderTest) {
+  // The values must be stored in the SIMD lanes in the order they are passed.
+#if CPU_ARCH_AMD64
+  simd::Scalar v__(1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f);
+#elif CPU_ARCH_ARM
+  simd::Scalar v__(1.0f, 2.0f, 3.0f, 4.0f);
+#endif
+  float buf[8];
+  v__.StoreData(buf);
+  for (size_t k = 0; k < simd::Scalar::data_stride; ++k)
+    EXPECT_FLOAT_EQ(static_cast<float>(k + 1), buf[k]);
+}
+
+TEST_F(CalculationTest, SoaContainerAppendAndSizeTest) {
+  simd::SOAContainer<1, 1> container(4);
+  EXPECT_EQ(container.GetSize(), 0);
+  EXPECT_EQ(container.GetCapacity(), 4);
+
+  Eigen::Matrix<float, 1, 1> value;
+  for (int i = 0; i < 5; ++i) {  // the fifth Append exceeds the capacity
+    value(0, 0) = static_cast<float>(i);
+    container.Append(value);
+  }
+  EXPECT_EQ(container.GetSize(), 4);
+  for (int i = 0; i < 4; ++i)
+    EXPECT_FLOAT_EQ(static_cast<float>(i), container.GetElementPtr(0, 0)[i]);
+}
+
+TEST_F(CalculationTest, SoaContainerMoveTest) {
+  simd::SOAContainer<1, 1> container(4);
+  Eigen::Matrix<float, 1, 1> value;
+  value(0, 0) = 1.0f;
+  container.Append(value);
+
+  simd::SOAContainer<1, 1> moved(std::move(container));
+  EXPECT_EQ(moved.GetSize(), 1);
+  EXPECT_FLOAT_EQ(1.0f, moved.GetElementPtr(0, 0)[0]);
+  EXPECT_EQ(container.GetSize(), 0);
+  EXPECT_EQ(container.GetElementPtr(0, 0), nullptr);
+}
+
+TEST_F(CalculationTest, UnalignedLoadStoreTest) {
+  alignas(32) float raw[17];
+  for (int i = 0; i < 17; ++i) raw[i] = static_cast<float>(i);
+
+  // `raw + 1` is deliberately not 32-byte aligned.
+  simd::Scalar loaded__(raw + 1);
+  float buf[8];
+  loaded__.StoreData(buf);
+  for (size_t k = 0; k < simd::Scalar::data_stride; ++k)
+    EXPECT_FLOAT_EQ(static_cast<float>(k + 1), buf[k]);
+
+  const auto doubled__ = loaded__ * 2.0f;
+  doubled__.StoreData(raw + 1);
+  for (size_t k = 0; k < simd::Scalar::data_stride; ++k)
+    EXPECT_FLOAT_EQ(static_cast<float>(2 * (k + 1)), raw[k + 1]);
 }
 
 }  // namespace simd_helper

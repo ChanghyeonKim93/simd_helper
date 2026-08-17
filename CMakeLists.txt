@@ -13,17 +13,15 @@ add_library(simd_helper INTERFACE)
 
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64")
   message("-- Detected architecture: x86_64")
-  target_compile_options(
-    simd_helper INTERFACE "-std=c++17" "-O2" "-march=native" "-msse" "-mavx"
-                          "-mavx2")
+  target_compile_options(simd_helper INTERFACE "-mavx" "-mavx2")
 elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
   message("-- Detected architecture: ARM64 (aarch64)")
-  target_compile_options(
-    simd_helper INTERFACE "-std=c++17" "-O2" "-ffast-math" "-ftree-vectorize"
-                          "-march=armv8-a+simd" "-mtune=cortex-a72")
+  target_compile_options(simd_helper INTERFACE "-march=armv8-a+simd")
 else()
   message("-- Unknown architecture: ${CMAKE_SYSTEM_PROCESSOR}")
 endif()
+
+target_compile_features(simd_helper INTERFACE cxx_std_17)
 
 target_include_directories(
   simd_helper INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
@@ -41,15 +39,34 @@ install(TARGETS simd_helper EXPORT simd_helper-targets)
 
 install(
   EXPORT simd_helper-targets
-  FILE simd_helper-config.cmake
+  FILE simd_helper-targets.cmake
   NAMESPACE simd_helper::
-  DESTINATION lib/cmake/simd_helper)
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/simd_helper)
+
+configure_package_config_file(
+  cmake/simd_helper-config.cmake.in
+  ${CMAKE_CURRENT_BINARY_DIR}/simd_helper-config.cmake
+  INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/simd_helper)
+
+write_basic_package_version_file(
+  ${CMAKE_CURRENT_BINARY_DIR}/simd_helper-config-version.cmake
+  COMPATIBILITY SameMajorVersion)
+
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/simd_helper-config.cmake
+              ${CMAKE_CURRENT_BINARY_DIR}/simd_helper-config-version.cmake
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/simd_helper)
 
 # ===================================================================
 # Test codes
 # ===================================================================
-find_package(GTest REQUIRED)
+option(BUILD_TESTING "Build unit tests (requires GTest)" ON)
 
-add_executable(${PROJECT_NAME}_calculation_test test/calculation_test.cc)
-target_link_libraries(${PROJECT_NAME}_calculation_test PUBLIC GTest::gtest_main
-                                                              simd_helper)
+if(BUILD_TESTING)
+  find_package(GTest REQUIRED)
+  enable_testing()
+
+  add_executable(${PROJECT_NAME}_calculation_test test/calculation_test.cc)
+  target_link_libraries(${PROJECT_NAME}_calculation_test
+                        PUBLIC GTest::gtest_main simd_helper)
+  add_test(NAME calculation_test COMMAND ${PROJECT_NAME}_calculation_test)
+endif()
