@@ -1,6 +1,9 @@
 #ifndef SIMD_HELPER_SOA_CONTAINER_H_
 #define SIMD_HELPER_SOA_CONTAINER_H_
 
+#include <cstddef>
+#include <cstdlib>
+
 #include "Eigen/Dense"
 
 #define ALIGN_BYTES 32
@@ -23,8 +26,12 @@ namespace simd {
 /// @return Pointer to the allocated aligned memory.
 template <typename DataType>
 inline DataType* GetAlignedMemory(const size_t num_data) {
+  // std::aligned_alloc requires the allocation size to be a multiple of the
+  // alignment, so the requested size is rounded up.
+  const size_t num_bytes = (num_data * sizeof(DataType) + ALIGN_BYTES - 1) /
+                           ALIGN_BYTES * ALIGN_BYTES;
   return reinterpret_cast<DataType*>(
-      std::aligned_alloc(ALIGN_BYTES, num_data * sizeof(DataType)));
+      std::aligned_alloc(ALIGN_BYTES, num_bytes));
 }
 
 /// @brief Frees aligned memory allocated with GetAlignedMemory.
@@ -56,8 +63,41 @@ class SOAContainer {
         simd::FreeAlignedMemory<float>(data_[row][col]);
   }
 
+  // The container owns raw memory. Copying is deleted to prevent double-free;
+  // use move semantics to transfer ownership.
+  SOAContainer(const SOAContainer& rhs) = delete;
+  SOAContainer& operator=(const SOAContainer& rhs) = delete;
+
+  SOAContainer(SOAContainer&& rhs) noexcept
+      : index_(rhs.index_), capacity_(rhs.capacity_) {
+    for (int row = 0; row < kRow; ++row) {
+      for (int col = 0; col < kCol; ++col) {
+        data_[row][col] = rhs.data_[row][col];
+        rhs.data_[row][col] = nullptr;
+      }
+    }
+    rhs.index_ = 0;
+    rhs.capacity_ = -1;
+  }
+
+  SOAContainer& operator=(SOAContainer&& rhs) noexcept {
+    if (this == &rhs) return *this;
+    for (int row = 0; row < kRow; ++row) {
+      for (int col = 0; col < kCol; ++col) {
+        simd::FreeAlignedMemory<float>(data_[row][col]);
+        data_[row][col] = rhs.data_[row][col];
+        rhs.data_[row][col] = nullptr;
+      }
+    }
+    index_ = rhs.index_;
+    capacity_ = rhs.capacity_;
+    rhs.index_ = 0;
+    rhs.capacity_ = -1;
+    return *this;
+  }
+
   void Append(const Eigen::Matrix<float, kRow, kCol>& value) {
-    if (index_ >= capacity_ - 1) return;
+    if (index_ >= capacity_) return;
     for (int row = 0; row < kRow; ++row)
       for (int col = 0; col < kCol; ++col)
         data_[row][col][index_] = value(row, col);
@@ -82,7 +122,7 @@ class SOAContainer {
 
   void Clear() { index_ = 0; }
 
-  int GetSize() const { return index_ + 1; }
+  int GetSize() const { return index_; }
 
   int GetCapacity() const { return capacity_; }
 
