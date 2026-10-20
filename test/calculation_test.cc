@@ -199,6 +199,29 @@ TEST_F(CalculationTest, MatrixAddSubTest) {
         EXPECT_FLOAT_EQ(sub_res_true[k](i, j), res[k](i, j));
 }
 
+TEST_F(CalculationTest, BlockAssignmentNoAliasGuardTest) {
+  simd::Matrix<4, 4> m = simd::Matrix<4, 4>::Zeros();
+  m(0, 0) = 7.0f;
+  m(0, 1) = 11.0f;
+  m(1, 0) = 13.0f;
+  m(1, 1) = 17.0f;
+
+  auto src = m.block<2, 2>(0, 0);
+  auto dst = m.block<2, 2>(2, 2);
+  dst.noalias() = src;
+
+  std::vector<Eigen::Matrix<float, 4, 4>> lanes;
+  m.StoreData(&lanes);
+
+  Eigen::Matrix<float, 4, 4> expected;
+  expected << 7.0f, 11.0f, 0.0f, 0.0f, 13.0f, 17.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+      7.0f, 11.0f, 0.0f, 0.0f, 13.0f, 17.0f;
+
+  for (size_t i = 0; i < simd::Scalar::data_stride; ++i) {
+    EXPECT_TRUE(lanes[i].isApprox(expected, 1e-5f));
+  }
+}
+
 TEST_F(CalculationTest, VectorCompareTest) {
   float v1 = 4;
   float v2 = -3;

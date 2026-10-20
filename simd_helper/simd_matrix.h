@@ -52,12 +52,39 @@ class Matrix {
       return (*original_matrix_)(start_row_ + r, start_col_);
     }
 
+    // "noalias" is an explicit opt-in for the alias-safe assignment path.
+    // It does not change the semantics of ordinary assignment; it merely makes
+    // the caller's intent clear and keeps the write path safe for overlapping
+    // sources/sinks.
+    template <int BR = kBlockRow, int BC = kBlockCol>
+    typename std::enable_if<!(BR == 1 && BC == 1), BlockMatrix&>::type
+    noalias() {
+      return *this;
+    }
+
+    template <int BR = kBlockRow, int BC = kBlockCol>
+    typename std::enable_if<BR == 1 && BC == 1, BlockMatrix&>::type noalias() {
+      return *this;
+    }
+
+    // Real value-copy assignment. We stage rhs into a temporary matrix first so
+    // assignment remains well-defined even when the source and destination are
+    // overlapping regions of the same parent matrix.
+    BlockMatrix& operator=(const BlockMatrix& rhs) {
+      Matrix<kBlockRow, kBlockCol> rhs_copy = rhs;
+      for (int r = 0; r < kBlockRow; ++r)
+        for (int c = 0; c < kBlockCol; ++c)
+          (*original_matrix_)(r + start_row_, c + start_col_) = rhs_copy(r, c);
+      return *this;
+    }
+
     template <int BR = kBlockRow, int BC = kBlockCol>
     typename std::enable_if<!(BR == 1 && BC == 1), BlockMatrix&>::type
     operator=(const Matrix<kBlockRow, kBlockCol>& rhs) {
+      Matrix<kBlockRow, kBlockCol> rhs_copy = rhs;
       for (int r = 0; r < kBlockRow; ++r)
         for (int c = 0; c < kBlockCol; ++c)
-          (*original_matrix_)(r + start_row_, c + start_col_) = rhs(r, c);
+          (*original_matrix_)(r + start_row_, c + start_col_) = rhs_copy(r, c);
       return *this;
     }
 
