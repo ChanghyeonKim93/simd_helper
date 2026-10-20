@@ -5,20 +5,28 @@ if(NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 17)
 endif()
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -O2")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
 
 find_package(Eigen3 REQUIRED)
 
+option(SIMD_HELPER_ENABLE_NATIVE_OPTIMIZATION
+       "Enable native SIMD compiler flags for downstream targets" ON)
+
 add_library(simd_helper INTERFACE)
 
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64")
-  message("-- Detected architecture: x86_64")
-  target_compile_options(simd_helper INTERFACE "-mavx" "-mavx2")
-elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
-  message("-- Detected architecture: ARM64 (aarch64)")
-  target_compile_options(simd_helper INTERFACE "-march=armv8-a+simd")
-else()
-  message("-- Unknown architecture: ${CMAKE_SYSTEM_PROCESSOR}")
+if(SIMD_HELPER_ENABLE_NATIVE_OPTIMIZATION)
+  if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64|amd64")
+    message("-- Detected architecture: x86_64")
+    target_compile_options(simd_helper INTERFACE
+      $<$<COMPILE_LANG_AND_ID:CXX,GNU,Clang,AppleClang>:-mavx>
+      $<$<COMPILE_LANG_AND_ID:CXX,GNU,Clang,AppleClang>:-mavx2>)
+  elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|ARM64|arm64")
+    message("-- Detected architecture: ARM64 (aarch64)")
+    target_compile_options(simd_helper INTERFACE
+      $<$<COMPILE_LANG_AND_ID:CXX,GNU,Clang,AppleClang>:-march=armv8-a+simd>)
+  else()
+    message("-- Unknown architecture: ${CMAKE_SYSTEM_PROCESSOR}")
+  endif()
 endif()
 
 target_compile_features(simd_helper INTERFACE cxx_std_17)

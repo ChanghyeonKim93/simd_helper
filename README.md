@@ -16,6 +16,17 @@ Simd helper is a lightweight header-only C++ library wrapping SIMD operations fo
 * C++17 or higher
 * [GoogleTest](https://github.com/google/googletest) (only when building the unit tests)
 
+### Required compiler flags and CPU support
+This project uses AVX2 intrinsics on x86_64 and NEON intrinsics on aarch64.
+
+* x86_64 target minimum requirement: AVX2-capable CPU (Intel Haswell/AMD Excavator or newer)
+* aarch64 target minimum requirement: ARMv8-A with NEON support
+* Required compiler flags:
+  * x86_64: `-mavx -mavx2`
+  * aarch64: `-march=armv8-a+simd`
+
+If you build with a plain `g++` command instead of CMake, the build will fail with a clear preprocessor error explaining the required flag.
+
 ### Installation
 1. Clone repository 
 ```
@@ -42,6 +53,7 @@ find_package(simd_helper REQUIRED)
 
 ...
 # Link `simd_helper` for your library or executable
+# This also propagates the required SIMD compile flags to your target.
 target_link_libraries(${YOUR_EXECUTABLE_NAME} PUBLIC simd_helper::simd_helper)
 ...
 ```
