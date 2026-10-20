@@ -81,23 +81,25 @@ inline PackedFloat32 Broadcast(float input) {
 #endif
 }
 
-/// @brief Load float values from memory into a SIMD register
+/// @brief Load float values from memory into a SIMD register.
+/// The input pointer does not need to be aligned.
 /// @param input Pointer to the float values in memory
 /// @return The SIMD register containing the loaded float values
 inline PackedFloat32 Load(const float* input) {
 #if defined(CPU_ARCH_AMD64)
-  return _mm256_load_ps(input);
+  return _mm256_loadu_ps(input);
 #elif defined(CPU_ARCH_ARM)
   return vld1q_f32(input);
 #endif
 }
 
-/// @brief Store float values from a SIMD register into memory
+/// @brief Store float values from a SIMD register into memory.
+/// The output pointer does not need to be aligned.
 /// @param output Pointer to the memory location to store the float values
 /// @param input The SIMD register containing the float values to store
 inline void Store(const PackedFloat32& input, float* output) {
 #if defined(CPU_ARCH_AMD64)
-  _mm256_store_ps(output, input);
+  _mm256_storeu_ps(output, input);
 #elif defined(CPU_ARCH_ARM)
   vst1q_f32(output, input);
 #endif
@@ -157,7 +159,12 @@ inline PackedFloat32 GetReciprocalNumber(const PackedFloat32& input) {
 #if defined(CPU_ARCH_AMD64)
   return _mm256_rcp_ps(input);
 #elif defined(CPU_ARCH_ARM)
-  return vrecpeq_f32(input);
+  // vrecpeq_f32 alone provides only ~8 bits of precision. One Newton-Raphson
+  // refinement step brings it close to the precision of the AVX rcp
+  // instruction (~12 bits).
+  PackedFloat32 reciprocal = vrecpeq_f32(input);
+  reciprocal = vmulq_f32(reciprocal, vrecpsq_f32(input, reciprocal));
+  return reciprocal;
 #endif
 }
 
@@ -168,7 +175,9 @@ inline PackedFloat32 Round(const PackedFloat32& input) {
 #if defined(CPU_ARCH_AMD64)
   return _mm256_round_ps(input, _MM_FROUND_NINT);
 #elif defined(CPU_ARCH_ARM)
-  return vrndaq_f32(input);
+  // vrndnq_f32 rounds ties to even, matching the x86 rounding behavior.
+  // (vrndaq_f32 rounds ties away from zero, which differs at *.5 values.)
+  return vrndnq_f32(input);
 #endif
 }
 
@@ -300,9 +309,11 @@ inline PackedFloat32 Select(const PackedFloat32& mask,
 #endif
 }
 
-PackedFloat32 __one{Broadcast(1.0f)};
-PackedFloat32 __minus_one{Broadcast(-1.0f)};
-PackedFloat32 __zero{Broadcast(0.0f)};
+// Note: `inline` is required to avoid multiple-definition linker errors when
+// this header is included in more than one translation unit.
+inline const PackedFloat32 kOne{Broadcast(1.0f)};
+inline const PackedFloat32 kMinusOne{Broadcast(-1.0f)};
+inline const PackedFloat32 kZero{Broadcast(0.0f)};
 
 template <int kRow, int kCol>
 class Matrix;
@@ -323,7 +334,7 @@ class Matrix<1, 1> {
   // Initialization & Assignment operations
 
   /// @brief Default constructor initializes all elements to zero.
-  Matrix<1, 1>() { data_ = __zero; }
+  Matrix<1, 1>() { data_ = kZero; }
 
   /// @brief Constructor initializes all elements to the given input value.
   /// @param input The value to initialize all elements of the matrix.
@@ -334,7 +345,9 @@ class Matrix<1, 1> {
   /// @param n1_to_n8 The values to initialize the matrix.
   Matrix<1, 1>(const float n1, const float n2, const float n3, const float n4,
                const float n5, const float n6, const float n7, const float n8) {
-    data_ = Set(n8, n7, n6, n5, n4, n3, n2, n1);
+    // Note: `Set` already reorders its arguments to match the AMD64 intrinsic,
+    // so the arguments are passed in the natural order here.
+    data_ = Set(n1, n2, n3, n4, n5, n6, n7, n8);
   }
 #elif defined(CPU_ARCH_ARM)
   /// @brief Constructor initializes the matrix with 4 float values.
@@ -387,47 +400,47 @@ class Matrix<1, 1> {
 
   Matrix<1, 1> operator<(const float scalar) const {
     return Matrix<1, 1>(
-        Select(IsLessThan(data_, Broadcast(scalar)), __one, __zero));
+        Select(IsLessThan(data_, Broadcast(scalar)), kOne, kZero));
   }
 
   Matrix<1, 1> operator<=(const float scalar) const {
     return Matrix<1, 1>(
-        Select(IsLessThanOrEqual(data_, Broadcast(scalar)), __one, __zero));
+        Select(IsLessThanOrEqual(data_, Broadcast(scalar)), kOne, kZero));
   }
 
   Matrix<1, 1> operator>(const float scalar) const {
     return Matrix<1, 1>(
-        Select(IsGreaterThan(data_, Broadcast(scalar)), __one, __zero));
+        Select(IsGreaterThan(data_, Broadcast(scalar)), kOne, kZero));
   }
 
   Matrix<1, 1> operator>=(const float scalar) const {
     return Matrix<1, 1>(
-        Select(IsGreaterThanOrEqual(data_, Broadcast(scalar)), __one, __zero));
+        Select(IsGreaterThanOrEqual(data_, Broadcast(scalar)), kOne, kZero));
   }
 
   Matrix<1, 1> operator<(const Matrix<1, 1>& rhs) const {
-    return Matrix<1, 1>(Select(IsLessThan(data_, rhs.data_), __one, __zero));
+    return Matrix<1, 1>(Select(IsLessThan(data_, rhs.data_), kOne, kZero));
   }
 
   Matrix<1, 1> operator<=(const Matrix<1, 1>& rhs) const {
     return Matrix<1, 1>(
-        Select(IsLessThanOrEqual(data_, rhs.data_), __one, __zero));
+        Select(IsLessThanOrEqual(data_, rhs.data_), kOne, kZero));
   }
 
   Matrix<1, 1> operator>(const Matrix<1, 1>& rhs) const {
-    return Matrix<1, 1>(Select(IsGreaterThan(data_, rhs.data_), __one, __zero));
+    return Matrix<1, 1>(Select(IsGreaterThan(data_, rhs.data_), kOne, kZero));
   }
 
   Matrix<1, 1> operator>=(const Matrix<1, 1>& rhs) const {
     return Matrix<1, 1>(
-        Select(IsGreaterThanOrEqual(data_, rhs.data_), __one, __zero));
+        Select(IsGreaterThanOrEqual(data_, rhs.data_), kOne, kZero));
   }
 
   // Arithmetic operations
   Matrix<1, 1> operator+() const { return Matrix<1, 1>(*this); }
 
   Matrix<1, 1> operator-() const {
-    return Matrix<1, 1>(Subtract(__zero, data_));
+    return Matrix<1, 1>(Subtract(kZero, data_));
   }
 
   Matrix<1, 1> operator+(const float rhs) const {
@@ -494,6 +507,31 @@ class Matrix<1, 1> {
     return *this;
   }
 
+  Matrix<1, 1>& operator/=(const Matrix<1, 1>& rhs) {
+    data_ = Divide(data_, rhs.data_);
+    return *this;
+  }
+
+  Matrix<1, 1>& operator+=(const float rhs) {
+    data_ = Add(data_, Broadcast(rhs));
+    return *this;
+  }
+
+  Matrix<1, 1>& operator-=(const float rhs) {
+    data_ = Subtract(data_, Broadcast(rhs));
+    return *this;
+  }
+
+  Matrix<1, 1>& operator*=(const float rhs) {
+    data_ = Multiply(data_, Broadcast(rhs));
+    return *this;
+  }
+
+  Matrix<1, 1>& operator/=(const float rhs) {
+    data_ = Divide(data_, Broadcast(rhs));
+    return *this;
+  }
+
   /// @brief Returns the square root of the matrix elements.
   /// @return Matrix<1, 1> with square root of the elements.
   Matrix<1, 1> sqrt() const { return Matrix<1, 1>(Sqrt(data_)); }
@@ -502,8 +540,8 @@ class Matrix<1, 1> {
   /// @return Matrix<1, 1> with elements set to 1.0f for positive elements and
   /// -1.0f for negative elements.
   Matrix<1, 1> sign() const {
-    const PackedFloat32 positive_mask = IsGreaterThanOrEqual(data_, __zero);
-    return Matrix<1, 1>(Select(positive_mask, __one, __minus_one));
+    const PackedFloat32 positive_mask = IsGreaterThanOrEqual(data_, kZero);
+    return Matrix<1, 1>(Select(positive_mask, kOne, kMinusOne));
   }
 
   /// @brief Returns the absolute value of the matrix elements.
@@ -607,12 +645,12 @@ class Matrix<1, 1> {
                                   const Matrix<1, 1>& scalar) {
     float multi_scalars[Scalar::data_stride];
     scalar.StoreData(multi_scalars);
-    std::cout << "[";
-    for (int i = 0; i < Scalar::data_stride; ++i) {
-      std::cout << "[" << multi_scalars[i] << "]";
-      if (i != Scalar::data_stride - 1) std::cout << ",\n";
+    outputStream << "[";
+    for (size_t i = 0; i < Scalar::data_stride; ++i) {
+      outputStream << "[" << multi_scalars[i] << "]";
+      if (i != Scalar::data_stride - 1) outputStream << ",\n";
     }
-    std::cout << "]" << std::endl;
+    outputStream << "]" << std::endl;
     return outputStream;
   }
 

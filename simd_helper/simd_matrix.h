@@ -1,6 +1,7 @@
 #ifndef SIMD_HELPER_SIMD_MATRIX_H_
 #define SIMD_HELPER_SIMD_MATRIX_H_
 
+#include <stdexcept>
 #include <vector>
 
 #include "simd_helper/simd_scalar.h"
@@ -346,12 +347,14 @@ class Matrix {
     Matrix res{Matrix::Zeros()};
     for (int r = 0; r < kRow; ++r)
       for (int c = 0; c < kCol; ++c) res(r, c) = data_[r][c].sqrt();
+    return res;
   }
 
   Matrix cwiseSign() const {
     Matrix res{Matrix::Zeros()};
     for (int r = 0; r < kRow; ++r)
       for (int c = 0; c < kCol; ++c) res(r, c) = data_[r][c].sign();
+    return res;
   }
 
   Matrix cwiseAbs() const {
@@ -434,15 +437,12 @@ class Matrix {
 
   friend std::ostream& operator<<(std::ostream& outputStream,
                                   const Matrix& simd_mat) {
-    static std::stringstream ss;
-    ss.str("");
     std::vector<EigenMatrix> multi_matrices;
     simd_mat.StoreData(&multi_matrices);
-    ss << "{";
-    for (int i = 0; i < Matrix::data_stride; ++i)
-      ss << "[" << multi_matrices[i] << "]\n";
-    ss << "}" << std::endl;
-    std::cerr << ss.str();
+    outputStream << "{";
+    for (size_t i = 0; i < Matrix::data_stride; ++i)
+      outputStream << "[" << multi_matrices[i] << "]\n";
+    outputStream << "}" << std::endl;
     return outputStream;
   }
 
