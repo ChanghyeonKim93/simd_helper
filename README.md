@@ -43,5 +43,8 @@ target_link_libraries(${YOUR_EXECUTABLE_NAME} PUBLIC simd_helper::simd_helper)
 ...
 ```
 
+### License
+This project is licensed under the MIT License. See [LICENSE](LICENSE).
+
 ### Applications
 1. [Nonlinear Optimization for SLAM](https://github.com/ChanghyeonKim93/nonlinear_optimizer_for_slam)
