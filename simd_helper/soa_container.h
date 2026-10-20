@@ -6,7 +6,7 @@
 
 #include "Eigen/Dense"
 
-#define ALIGN_BYTES 32
+#define SIMD_HELPER_ALIGN_BYTES 32
 // AVX2 (512 bits = 64 Bytes), AVX (256 bits ), SSE4.2 (128 bits )
 /** \internal Like malloc, but the returned pointer is guaranteed to be 32-byte
  * aligned. Fast, but wastes 32 additional bytes of memory. Does not throw any
@@ -28,10 +28,10 @@ template <typename DataType>
 inline DataType* GetAlignedMemory(const size_t num_data) {
   // std::aligned_alloc requires the allocation size to be a multiple of the
   // alignment, so the requested size is rounded up.
-  const size_t num_bytes = (num_data * sizeof(DataType) + ALIGN_BYTES - 1) /
-                           ALIGN_BYTES * ALIGN_BYTES;
+  const size_t num_bytes = (num_data * sizeof(DataType) + SIMD_HELPER_ALIGN_BYTES - 1) /
+                           SIMD_HELPER_ALIGN_BYTES * SIMD_HELPER_ALIGN_BYTES;
   return reinterpret_cast<DataType*>(
-      std::aligned_alloc(ALIGN_BYTES, num_bytes));
+      std::aligned_alloc(SIMD_HELPER_ALIGN_BYTES, num_bytes));
 }
 
 /// @brief Frees aligned memory allocated with GetAlignedMemory.

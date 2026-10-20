@@ -6,20 +6,33 @@
 
 #include "simd_helper/soa_container.h"
 
-#if defined(__amd64__) || defined(__x86_64__)
-#define CPU_ARCH_AMD64 1
-#elif defined(__arm64__) || defined(__aarch64__)
-#define CPU_ARCH_ARM 1
+#if defined(__x86_64__) || defined(_M_X64) || defined(__amd64__)
+#define SIMD_HELPER_CPU_ARCH_X86_64 1
+#elif defined(__arm64__) || defined(__aarch64__) || defined(_M_ARM64)
+#define SIMD_HELPER_CPU_ARCH_AARCH64 1
+#else
+#error \
+    "SIMD_HELPER: unsupported architecture. Supported targets are x86_64 and aarch64."
 #endif
 
-#if CPU_ARCH_AMD64
+#if defined(SIMD_HELPER_CPU_ARCH_X86_64) && !defined(__AVX2__)
+#error \
+    "SIMD_HELPER: AVX2 is required for x86_64 builds. Compile with -mavx -mavx2 or link through the simd_helper CMake target."
+#endif
+
+#if defined(SIMD_HELPER_CPU_ARCH_AARCH64) && !defined(__ARM_NEON)
+#error \
+    "SIMD_HELPER: ARM NEON is required for aarch64 builds. Compile with -march=armv8-a+simd."
+#endif
+
+#if SIMD_HELPER_CPU_ARCH_X86_64
 
 #include <immintrin.h>
 
-#define SIMD_FLOAT_PACK_LANES 8
-#define SIMD_INT32_PACK_LANES 8
-#define SIMD_INT16_PACK_LANES 16
-#define SIMD_INT8_PACK_LANES 32
+#define SIMD_HELPER_FLOAT_PACK_LANES 8
+#define SIMD_HELPER_INT32_PACK_LANES 8
+#define SIMD_HELPER_INT16_PACK_LANES 16
+#define SIMD_HELPER_INT8_PACK_LANES 32
 
 using PackedFloat32 = __m256;
 using PackedInt8 = __m256i;    // 8bits integer x 32
@@ -29,14 +42,14 @@ using PackedUInt8 = __m256i;   // 8bits unsigned integer x 32
 using PackedUInt16 = __m256i;  // 16bits unsigned integer x 16
 using PackedUInt32 = __m256i;  // 32bits unsigned integer x 8
 
-#elif CPU_ARCH_ARM
+#elif SIMD_HELPER_CPU_ARCH_AARCH64
 
 #include <arm_neon.h>
 
-#define SIMD_FLOAT_PACK_LANES 4
-#define SIMD_INT32_PACK_LANES 4
-#define SIMD_INT16_PACK_LANES 8
-#define SIMD_INT8_PACK_LANES 16
+#define SIMD_HELPER_FLOAT_PACK_LANES 4
+#define SIMD_HELPER_INT32_PACK_LANES 4
+#define SIMD_HELPER_INT16_PACK_LANES 8
+#define SIMD_HELPER_INT8_PACK_LANES 16
 
 using PackedFloat32 = float32x4_t;
 using PackedInt8 = int8x16_t;     // 8bits integer x 16
@@ -52,7 +65,7 @@ using PackedUInt32 = uint32x4_t;  // 32bits unsigned integer x 4
 
 namespace simd {
 
-#if defined(CPU_ARCH_AMD64)
+#if defined(SIMD_HELPER_CPU_ARCH_X86_64)
 /// @brief Set the SIMD register with 8 float values
 /// @param n1 to n8 The values to set in the SIMD register.
 inline PackedFloat32 Set(float n1, float n2, float n3, float n4, float n5,
@@ -61,7 +74,7 @@ inline PackedFloat32 Set(float n1, float n2, float n3, float n4, float n5,
   // function's requirement.
   return _mm256_set_ps(n8, n7, n6, n5, n4, n3, n2, n1);
 }
-#elif defined(CPU_ARCH_ARM)
+#elif defined(SIMD_HELPER_CPU_ARCH_AARCH64)
 /// @brief Set the SIMD register with 4 float values.
 /// @param n1 to n4 The values to set in the SIMD register.
 inline PackedFloat32 Set(float n1, float n2, float n3, float n4) {
@@ -74,9 +87,9 @@ inline PackedFloat32 Set(float n1, float n2, float n3, float n4) {
 /// @param input The float value to broadcast
 /// @return The SIMD register with all elements set to the input value
 inline PackedFloat32 Broadcast(float input) {
-#if defined(CPU_ARCH_AMD64)
+#if defined(SIMD_HELPER_CPU_ARCH_X86_64)
   return _mm256_set1_ps(input);
-#elif defined(CPU_ARCH_ARM)
+#elif defined(SIMD_HELPER_CPU_ARCH_AARCH64)
   return vdupq_n_f32(input);
 #endif
 }
@@ -86,9 +99,9 @@ inline PackedFloat32 Broadcast(float input) {
 /// @param input Pointer to the float values in memory
 /// @return The SIMD register containing the loaded float values
 inline PackedFloat32 Load(const float* input) {
-#if defined(CPU_ARCH_AMD64)
+#if defined(SIMD_HELPER_CPU_ARCH_X86_64)
   return _mm256_loadu_ps(input);
-#elif defined(CPU_ARCH_ARM)
+#elif defined(SIMD_HELPER_CPU_ARCH_AARCH64)
   return vld1q_f32(input);
 #endif
 }
@@ -98,9 +111,9 @@ inline PackedFloat32 Load(const float* input) {
 /// @param output Pointer to the memory location to store the float values
 /// @param input The SIMD register containing the float values to store
 inline void Store(const PackedFloat32& input, float* output) {
-#if defined(CPU_ARCH_AMD64)
+#if defined(SIMD_HELPER_CPU_ARCH_X86_64)
   _mm256_storeu_ps(output, input);
-#elif defined(CPU_ARCH_ARM)
+#elif defined(SIMD_HELPER_CPU_ARCH_AARCH64)
   vst1q_f32(output, input);
 #endif
 }
@@ -110,9 +123,9 @@ inline void Store(const PackedFloat32& input, float* output) {
 /// @param b The second SIMD register
 /// @return The result of the element-wise addition
 inline PackedFloat32 Add(const PackedFloat32& a, const PackedFloat32& b) {
-#if defined(CPU_ARCH_AMD64)
+#if defined(SIMD_HELPER_CPU_ARCH_X86_64)
   return _mm256_add_ps(a, b);
-#elif defined(CPU_ARCH_ARM)
+#elif defined(SIMD_HELPER_CPU_ARCH_AARCH64)
   return vaddq_f32(a, b);
 #endif
 }
@@ -122,9 +135,9 @@ inline PackedFloat32 Add(const PackedFloat32& a, const PackedFloat32& b) {
 /// @param b The second SIMD register
 /// @return The result of the element-wise subtraction
 inline PackedFloat32 Subtract(const PackedFloat32& a, const PackedFloat32& b) {
-#if defined(CPU_ARCH_AMD64)
+#if defined(SIMD_HELPER_CPU_ARCH_X86_64)
   return _mm256_sub_ps(a, b);
-#elif defined(CPU_ARCH_ARM)
+#elif defined(SIMD_HELPER_CPU_ARCH_AARCH64)
   return vsubq_f32(a, b);
 #endif
 }
@@ -133,9 +146,9 @@ inline PackedFloat32 Subtract(const PackedFloat32& a, const PackedFloat32& b) {
 /// @param a The first SIMD register
 /// @param b The second SIMD registerSSS
 inline PackedFloat32 Multiply(const PackedFloat32& a, const PackedFloat32& b) {
-#if defined(CPU_ARCH_AMD64)
+#if defined(SIMD_HELPER_CPU_ARCH_X86_64)
   return _mm256_mul_ps(a, b);
-#elif defined(CPU_ARCH_ARM)
+#elif defined(SIMD_HELPER_CPU_ARCH_AARCH64)
   return vmulq_f32(a, b);
 #endif
 }
@@ -145,9 +158,9 @@ inline PackedFloat32 Multiply(const PackedFloat32& a, const PackedFloat32& b) {
 /// @param b The denominator SIMD register
 /// @return The result of the element-wise division
 inline PackedFloat32 Divide(const PackedFloat32& a, const PackedFloat32& b) {
-#if defined(CPU_ARCH_AMD64)
+#if defined(SIMD_HELPER_CPU_ARCH_X86_64)
   return _mm256_div_ps(a, b);
-#elif defined(CPU_ARCH_ARM)
+#elif defined(SIMD_HELPER_CPU_ARCH_AARCH64)
   return vdivq_f32(a, b);
 #endif
 }
@@ -156,9 +169,9 @@ inline PackedFloat32 Divide(const PackedFloat32& a, const PackedFloat32& b) {
 /// @param input The SIMD register to compute the reciprocal for
 /// @return The SIMD register containing the reciprocals of the input elements
 inline PackedFloat32 GetReciprocalNumber(const PackedFloat32& input) {
-#if defined(CPU_ARCH_AMD64)
+#if defined(SIMD_HELPER_CPU_ARCH_X86_64)
   return _mm256_rcp_ps(input);
-#elif defined(CPU_ARCH_ARM)
+#elif defined(SIMD_HELPER_CPU_ARCH_AARCH64)
   // vrecpeq_f32 alone provides only ~8 bits of precision. One Newton-Raphson
   // refinement step brings it close to the precision of the AVX rcp
   // instruction (~12 bits).
@@ -172,9 +185,9 @@ inline PackedFloat32 GetReciprocalNumber(const PackedFloat32& input) {
 /// @param input The SIMD register to round
 /// @return The SIMD register containing the rounded values
 inline PackedFloat32 Round(const PackedFloat32& input) {
-#if defined(CPU_ARCH_AMD64)
+#if defined(SIMD_HELPER_CPU_ARCH_X86_64)
   return _mm256_round_ps(input, _MM_FROUND_NINT);
-#elif defined(CPU_ARCH_ARM)
+#elif defined(SIMD_HELPER_CPU_ARCH_AARCH64)
   // vrndnq_f32 rounds ties to even, matching the x86 rounding behavior.
   // (vrndaq_f32 rounds ties away from zero, which differs at *.5 values.)
   return vrndnq_f32(input);
@@ -185,9 +198,9 @@ inline PackedFloat32 Round(const PackedFloat32& input) {
 /// @param input The SIMD register to compute the ceiling for
 /// @return The SIMD register containing the ceiling values
 inline PackedFloat32 Ceil(const PackedFloat32& input) {
-#if defined(CPU_ARCH_AMD64)
+#if defined(SIMD_HELPER_CPU_ARCH_X86_64)
   return _mm256_ceil_ps(input);
-#elif defined(CPU_ARCH_ARM)
+#elif defined(SIMD_HELPER_CPU_ARCH_AARCH64)
   return vrndpq_f32(input);
 #endif
 }
@@ -196,9 +209,9 @@ inline PackedFloat32 Ceil(const PackedFloat32& input) {
 /// @param input The SIMD register to compute the floor for
 /// @return The SIMD register containing the floor values
 inline PackedFloat32 Floor(const PackedFloat32& input) {
-#if defined(CPU_ARCH_AMD64)
+#if defined(SIMD_HELPER_CPU_ARCH_X86_64)
   return _mm256_floor_ps(input);
-#elif defined(CPU_ARCH_ARM)
+#elif defined(SIMD_HELPER_CPU_ARCH_AARCH64)
   return vrndmq_f32(input);
 #endif
 }
@@ -207,9 +220,9 @@ inline PackedFloat32 Floor(const PackedFloat32& input) {
 /// @param input The SIMD register to compute the square root for
 /// @return The SIMD register containing the square root values
 inline PackedFloat32 Sqrt(const PackedFloat32& input) {
-#if defined(CPU_ARCH_AMD64)
+#if defined(SIMD_HELPER_CPU_ARCH_X86_64)
   return _mm256_sqrt_ps(input);
-#elif defined(CPU_ARCH_ARM)
+#elif defined(SIMD_HELPER_CPU_ARCH_AARCH64)
   return vsqrtq_f32(input);
 #endif
 }
@@ -219,9 +232,9 @@ inline PackedFloat32 Sqrt(const PackedFloat32& input) {
 /// @param b The SIMD register to compute the exponential for
 /// @return The SIMD register containing the exponential values
 inline PackedFloat32 Min(const PackedFloat32& a, const PackedFloat32& b) {
-#if defined(CPU_ARCH_AMD64)
+#if defined(SIMD_HELPER_CPU_ARCH_X86_64)
   return _mm256_min_ps(a, b);
-#elif defined(CPU_ARCH_ARM)
+#elif defined(SIMD_HELPER_CPU_ARCH_AARCH64)
   return vminq_f32(a, b);
 #endif
 }
@@ -231,9 +244,9 @@ inline PackedFloat32 Min(const PackedFloat32& a, const PackedFloat32& b) {
 /// @param b The second SIMD register
 /// @return The SIMD register containing the maximum values
 inline PackedFloat32 Max(const PackedFloat32& a, const PackedFloat32& b) {
-#if defined(CPU_ARCH_AMD64)
+#if defined(SIMD_HELPER_CPU_ARCH_X86_64)
   return _mm256_max_ps(a, b);
-#elif defined(CPU_ARCH_ARM)
+#elif defined(SIMD_HELPER_CPU_ARCH_AARCH64)
   return vmaxq_f32(a, b);
 #endif
 }
@@ -244,9 +257,9 @@ inline PackedFloat32 Max(const PackedFloat32& a, const PackedFloat32& b) {
 /// @return The SIMD register containing the absolute values
 inline PackedFloat32 IsGreaterThan(const PackedFloat32& input,
                                    const PackedFloat32& threshold) {
-#if defined(CPU_ARCH_AMD64)
+#if defined(SIMD_HELPER_CPU_ARCH_X86_64)
   return _mm256_cmp_ps(input, threshold, _CMP_GT_OS);
-#elif defined(CPU_ARCH_ARM)
+#elif defined(SIMD_HELPER_CPU_ARCH_AARCH64)
   return vreinterpretq_f32_u32(vcgtq_f32(input, threshold));
 #endif
 }
@@ -257,9 +270,9 @@ inline PackedFloat32 IsGreaterThan(const PackedFloat32& input,
 /// @return The SIMD register containing the comparison results
 inline PackedFloat32 IsLessThan(const PackedFloat32& input,
                                 const PackedFloat32& threshold) {
-#if defined(CPU_ARCH_AMD64)
+#if defined(SIMD_HELPER_CPU_ARCH_X86_64)
   return _mm256_cmp_ps(input, threshold, _CMP_LT_OS);
-#elif defined(CPU_ARCH_ARM)
+#elif defined(SIMD_HELPER_CPU_ARCH_AARCH64)
   return vreinterpretq_f32_u32(vcltq_f32(input, threshold));
 #endif
 }
@@ -271,9 +284,9 @@ inline PackedFloat32 IsLessThan(const PackedFloat32& input,
 /// @return The SIMD register containing the comparison results
 inline PackedFloat32 IsGreaterThanOrEqual(const PackedFloat32& input,
                                           const PackedFloat32& threshold) {
-#if defined(CPU_ARCH_AMD64)
+#if defined(SIMD_HELPER_CPU_ARCH_X86_64)
   return _mm256_cmp_ps(input, threshold, _CMP_GE_OS);
-#elif defined(CPU_ARCH_ARM)
+#elif defined(SIMD_HELPER_CPU_ARCH_AARCH64)
   return vreinterpretq_f32_u32(vcgeq_f32(input, threshold));
 #endif
 }
@@ -285,9 +298,9 @@ inline PackedFloat32 IsGreaterThanOrEqual(const PackedFloat32& input,
 /// @return The SIMD register containing the comparison results
 inline PackedFloat32 IsLessThanOrEqual(const PackedFloat32& input,
                                        const PackedFloat32& threshold) {
-#if defined(CPU_ARCH_AMD64)
+#if defined(SIMD_HELPER_CPU_ARCH_X86_64)
   return _mm256_cmp_ps(input, threshold, _CMP_LE_OS);
-#elif defined(CPU_ARCH_ARM)
+#elif defined(SIMD_HELPER_CPU_ARCH_AARCH64)
   return vreinterpretq_f32_u32(vcleq_f32(input, threshold));
 #endif
 }
@@ -301,9 +314,9 @@ inline PackedFloat32 IsLessThanOrEqual(const PackedFloat32& input,
 inline PackedFloat32 Select(const PackedFloat32& mask,
                             const PackedFloat32& value_for_true,
                             const PackedFloat32& value_for_false) {
-#if defined(CPU_ARCH_AMD64)
+#if defined(SIMD_HELPER_CPU_ARCH_X86_64)
   return _mm256_blendv_ps(value_for_false, value_for_true, mask);
-#elif defined(CPU_ARCH_ARM)
+#elif defined(SIMD_HELPER_CPU_ARCH_AARCH64)
   return vbslq_f32(vreinterpretq_u32_f32(mask), value_for_true,
                    value_for_false);
 #endif
@@ -324,7 +337,7 @@ template <>
 class Matrix<1, 1> {
  public:
   // static member methods
-  static const size_t data_stride{SIMD_FLOAT_PACK_LANES};
+  static const size_t data_stride{SIMD_HELPER_FLOAT_PACK_LANES};
 
   static inline Matrix<1, 1> Zeros() { return Matrix<1, 1>(0.0f); }
 
@@ -340,7 +353,7 @@ class Matrix<1, 1> {
   /// @param input The value to initialize all elements of the matrix.
   explicit Matrix<1, 1>(const float input) { data_ = Broadcast(input); }
 
-#if defined(CPU_ARCH_AMD64)
+#if defined(SIMD_HELPER_CPU_ARCH_X86_64)
   /// @brief Constructor initializes the matrix with 8 float values.
   /// @param n1_to_n8 The values to initialize the matrix.
   Matrix<1, 1>(const float n1, const float n2, const float n3, const float n4,
@@ -349,7 +362,7 @@ class Matrix<1, 1> {
     // so the arguments are passed in the natural order here.
     data_ = Set(n1, n2, n3, n4, n5, n6, n7, n8);
   }
-#elif defined(CPU_ARCH_ARM)
+#elif defined(SIMD_HELPER_CPU_ARCH_AARCH64)
   /// @brief Constructor initializes the matrix with 4 float values.
   /// @param n1_to_n4 The values to initialize the matrix.
   Matrix<1, 1>(const float n1, const float n2, const float n3, const float n4) {
@@ -548,10 +561,10 @@ class Matrix<1, 1> {
   /// @return Matrix<1, 1> with absolute values of the elements.
   Matrix<1, 1> abs() const {
     // Use bitwise AND to clear the sign bit
-#if defined(CPU_ARCH_AMD64)
+#if defined(SIMD_HELPER_CPU_ARCH_X86_64)
     const PackedFloat32 minus_zero__ = Broadcast(-0.0f);
     const PackedFloat32 result = _mm256_andnot_ps(minus_zero__, data_);
-#elif defined(CPU_ARCH_ARM)
+#elif defined(SIMD_HELPER_CPU_ARCH_AARCH64)
     PackedUInt32 sign_mask = vdupq_n_u32(0x7FFFFFFF);
     PackedUInt32 data_as_int = vreinterpretq_u32_f32(data_);
     PackedUInt32 abs_as_int = vandq_u32(data_as_int, sign_mask);
@@ -595,7 +608,7 @@ class Matrix<1, 1> {
 
     // Calculate 2^n using bit manipulation. Convert n to integer type for bit
     // shifting
-#if defined(CPU_ARCH_AMD64)
+#if defined(SIMD_HELPER_CPU_ARCH_X86_64)
     PackedInt32 n_int = _mm256_cvtps_epi32(n_float);
     // 2^n is computed by adding n to the exponent field of 1.0
     // Shift n left by 23 bits (exponent position in IEEE-754)
@@ -605,7 +618,7 @@ class Matrix<1, 1> {
     // For negative n, 2^n = (1.0 * 2^n) = 1.0 / 2^(-n)
     PackedFloat32 pow2n = _mm256_castsi256_ps(
         _mm256_add_epi32(exponent_bits, _mm256_castps_si256(Broadcast(1.0f))));
-#elif defined(CPU_ARCH_ARM)
+#elif defined(SIMD_HELPER_CPU_ARCH_AARCH64)
     PackedInt32 n_int = vcvtq_s32_f32(n_float);
 
     // 2^n calculation
@@ -616,14 +629,14 @@ class Matrix<1, 1> {
     PackedFloat32 result = Multiply(pow2n, exp_r__);
 
     // Handle overflow and underflow
-#if defined(CPU_ARCH_AMD64)
+#if defined(SIMD_HELPER_CPU_ARCH_X86_64)
     PackedFloat32 is_too_small = IsLessThan(data_, min_valid_input);
     result = _mm256_andnot_ps(is_too_small, result);
     PackedFloat32 is_too_large = IsGreaterThan(data_, max_valid_input);
     PackedFloat32 inf_val =
         _mm256_set1_ps(std::numeric_limits<float>::infinity());
     result = _mm256_blendv_ps(result, inf_val, is_too_large);
-#elif defined(CPU_ARCH_ARM)
+#elif defined(SIMD_HELPER_CPU_ARCH_AARCH64)
     PackedUInt32 is_too_small = vcltq_f32(data_, min_valid_input);
     result = vreinterpretq_f32_u32(
         vbicq_u32(vreinterpretq_u32_f32(result), is_too_small));

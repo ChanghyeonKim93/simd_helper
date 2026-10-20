@@ -93,7 +93,7 @@ class Matrix {
  public:
   // Static members
 
-  static const size_t data_stride{SIMD_FLOAT_PACK_LANES};
+  static const size_t data_stride{SIMD_HELPER_FLOAT_PACK_LANES};
 
   static inline Matrix Zeros() { return Matrix(0.0f); }
 

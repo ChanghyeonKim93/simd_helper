@@ -15,9 +15,9 @@ simd::Vector<3> GenerateVectors() {
   EigenVec3 v2(-3, 1, 6);
   EigenVec3 v3(9, 3, -5);
   EigenVec3 v4(1, 6, -10);
-#if CPU_ARCH_AMD64
+#if defined(SIMD_HELPER_CPU_ARCH_X86_64)
   simd::Vector<3> v__({v1, v2, v3, v4, v4, v3, v2, v1});
-#elif CPU_ARCH_ARM
+#elif defined(SIMD_HELPER_CPU_ARCH_AARCH64)
   simd::Vector<3> v__({v1, v2, v3, v4});
 #endif
   return v__;
@@ -32,9 +32,9 @@ simd::Matrix<3, 3> GenerateMatrices() {
   M3 << -1, 2, -3, 4, -5, 6, -7, 8, -9;
   EigenMat3x3 M4;
   M4 << 9, -8, 7, -6, 5, -4, 3, -1, 2;
-#if CPU_ARCH_AMD64
+#if defined(SIMD_HELPER_CPU_ARCH_X86_64)
   simd::Matrix<3, 3> M__({M1, M2, M3, M4, M1, M2, M3, M4});
-#elif CPU_ARCH_ARM
+#elif defined(SIMD_HELPER_CPU_ARCH_AARCH64)
   simd::Matrix<3, 3> M__({M1, M2, M3, M4});
 #endif
   return M__;
@@ -124,10 +124,10 @@ TEST_F(CalculationTest, VectorAddSubTest) {
   sub_res_true.push_back(v3 - v4);
   sub_res_true.push_back(v1 - v2);
 
-#if CPU_ARCH_AMD64
+#if defined(SIMD_HELPER_CPU_ARCH_X86_64)
   simd::Vector<3> va__({v1, v3, v1, v3, v3, v1, v3, v1});
   simd::Vector<3> vb__({v2, v4, v4, v2, v2, v4, v4, v2});
-#elif CPU_ARCH_ARM
+#elif defined(SIMD_HELPER_CPU_ARCH_AARCH64)
   simd::Vector<3> va__({v1, v3, v1, v3});
   simd::Vector<3> vb__({v2, v4, v4, v2});
 #endif
@@ -175,10 +175,10 @@ TEST_F(CalculationTest, MatrixAddSubTest) {
   sub_res_true.push_back(M1 - M4);
   sub_res_true.push_back(M4 - M2);
 
-#if CPU_ARCH_AMD64
+#if defined(SIMD_HELPER_CPU_ARCH_X86_64)
   simd::Matrix<3, 3> Ma__({M1, M3, M1, M3, M3, M2, M1, M4});
   simd::Matrix<3, 3> Mb__({M2, M4, M4, M2, M2, M4, M4, M2});
-#elif CPU_ARCH_ARM
+#elif defined(SIMD_HELPER_CPU_ARCH_AARCH64)
   simd::Matrix<3, 3> Ma__({M1, M3, M1, M3});
   simd::Matrix<3, 3> Mb__({M2, M4, M4, M2});
 #endif
@@ -587,9 +587,9 @@ TEST_F(CalculationTest, CwiseOperationsTest) {
 
 TEST_F(CalculationTest, MultiValueConstructorOrderTest) {
   // The values must be stored in the SIMD lanes in the order they are passed.
-#if CPU_ARCH_AMD64
+#if defined(SIMD_HELPER_CPU_ARCH_X86_64)
   simd::Scalar v__(1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f);
-#elif CPU_ARCH_ARM
+#elif defined(SIMD_HELPER_CPU_ARCH_AARCH64)
   simd::Scalar v__(1.0f, 2.0f, 3.0f, 4.0f);
 #endif
   float buf[8];
